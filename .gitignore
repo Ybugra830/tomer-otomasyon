@@ -1,0 +1,9 @@
+# Backend (Django) Görmezden Gelinecekler
+backend/venv/
+backend/__pycache__/
+*.sqlite3
+.env
+
+# Frontend (React) Görmezden Gelinecekler
+frontend/node_modules/
+frontend/dist/
