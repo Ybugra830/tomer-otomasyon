@@ -7,8 +7,9 @@ urlpatterns = [
     path('diller/', views.getDiller, name='diller'),
     path('seviyeler/', views.getSeviyeler, name='seviyeler'),
     path('subeler/', views.getSubeler, name='subeler'),
+    path('indirimler/', views.getIndirimler, name='indirimler'),
+    path('sinav-turleri/', views.getSinavTurleri, name='sinav-turleri'),
     
     # Post İstekleri (Kayıt Olma)
-    path('aday-kayit/', views.createAday, name='aday-kayit'),
-    path('kurs-basvuru/', views.createKursBasvurusu, name='kurs-basvuru'),
+    path('basvuru-yap/', views.process_application, name='basvuru-yap'),
 ]

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import TomerApi from './services/TomerApi';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import WarningCard from './components/WarningCard';
@@ -22,8 +22,17 @@ function App() {
     anne_adi: '',
     dogum_yeri: '',
     dogum_tarihi: '',
+    uyruk: '',
     kayit_bilgi_notu: '',
     indirim: '',
+    indirim_kodu: '',
+    vize_turu: '',
+    vize_baslangic: '',
+    vize_bitis: '',
+    kayit_turu: '',
+    ulke_adresi: '',
+    turkiye_adresi: '',
+    ulke_telefonu: '',
     onay_bilgiler_dogru: false,
     onay_sorumluluk: false,
     onay_fatura: false,
@@ -32,6 +41,7 @@ function App() {
     egitim_sekli: 'Yüz Yüze',
     dil: '',
     seviye: '',
+    sinav_turu: '',
     sube: ''
   });
 
@@ -43,7 +53,8 @@ function App() {
   const [options, setOptions] = useState({
     diller: [],
     seviyeler: [],
-    subeler: []
+    subeler: [],
+    uyruklar: []
   });
 
   const [submitStatus, setSubmitStatus] = useState(null);
@@ -51,16 +62,14 @@ function App() {
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        const [dillerRes, seviyelerRes, subelerRes] = await Promise.all([
-          axios.get('http://localhost:8000/api/diller/').catch(() => ({ data: [] })),
-          axios.get('http://localhost:8000/api/seviyeler/').catch(() => ({ data: [] })),
-          axios.get('http://localhost:8000/api/subeler/').catch(() => ({ data: [] })),
-        ]);
-
+        const data = await TomerApi.fetchAllFormOptions();
         setOptions({
-          diller: dillerRes.data || [],
-          seviyeler: seviyelerRes.data || [],
-          subeler: subelerRes.data || [],
+          diller: data.diller || [],
+          seviyeler: data.seviyeler || [],
+          subeler: data.subeler || [],
+          uyruklar: data.uyruklar || [],
+          indirimler: data.indirimler || [],
+          sinavTurleri: data.sinavTurleri || []
         });
       } catch (error) {
         console.error('Error fetching form options:', error);
@@ -94,49 +103,82 @@ function App() {
 
     const submitData = new FormData();
 
-    // Map Kimlik Tipi properly to Django choices (if UI choice is different, map it here, but they seem to match. Let's send exactly what's in state)
-    // The error says "T.C. Kimlik Kartı" is not a valid choice. Let's fix mapping if backend expects something else, like 'TC', 'Yabancı', 'Pasaport', vb.
-    // If we assume backend expects the exact strings from the frontend, it might just be the quotes or exact Match issue.
-    // I will log and keep it strict to formData.kimlik_tipi. User didn't specify the exact Django mapping string, just requested: submitData.append('kimlik_tipi', formData.<YOUR_IDENTITY_TYPE_KEY>);
-    submitData.append('tc_pasaport_no', formData.tc_pasaport_no || '');
-    submitData.append('kimlik_tipi', formData.kimlik_tipi || '');
-    submitData.append('ad', formData.ad || '');
-    submitData.append('soyad', formData.soyad || '');
-    submitData.append('eposta', formData.eposta || '');
+    // 1. Kural 1: Her zaman gönderilecek temel kişisel veriler ve onaylar
+    const baseFields = [
+      'tc_pasaport_no', 'kimlik_tipi', 'ad', 'soyad', 'eposta', 
+      'telefon1', 'telefon2', 'baba_adi', 'anne_adi', 'dogum_yeri', 
+      'dogum_tarihi', 'uyruk', 'basvuru_tipi', 'egitim_sekli'
+    ];
+    baseFields.forEach(field => {
+      submitData.append(field, formData[field] || '');
+    });
 
-    // Map existing React state properties if they are defined, else provide empty string
-    submitData.append('telefon1', formData.telefon1 || '');
-    submitData.append('baba_adi', formData.baba_adi || '');
-    submitData.append('anne_adi', formData.anne_adi || '');
-    submitData.append('dogum_yeri', formData.dogum_yeri || '');
-    submitData.append('dogum_tarihi', formData.dogum_tarihi || '');
-    submitData.append('uyruk', formData.uyruk || '');
-
-    submitData.append('dil', formData.dil || '');
-    submitData.append('seviye', formData.seviye || '');
-    submitData.append('sube', formData.sube || '');
-    submitData.append('egitim_sekli', formData.egitim_sekli || '');
-    submitData.append('basvuru_tipi', formData.basvuru_tipi || '');
-
-    // Yeni Eklenen Alanlar
-    submitData.append('telefon2', formData.telefon2 || '');
-    submitData.append('kayit_bilgi_notu', formData.kayit_bilgi_notu || '');
-    submitData.append('indirim', formData.indirim || '');
     submitData.append('onay_bilgiler_dogru', formData.onay_bilgiler_dogru ? 'True' : 'False');
     submitData.append('onay_sorumluluk', formData.onay_sorumluluk ? 'True' : 'False');
     submitData.append('onay_fatura', formData.onay_fatura ? 'True' : 'False');
     submitData.append('onay_kursiyerlik', formData.onay_kursiyerlik ? 'True' : 'False');
 
-    // Check if 'files' state exists in scope before appending file documents
-    if (typeof files !== 'undefined' && files) {
-      if (files.identityDoc) submitData.append('kimlik_dosyasi', files.identityDoc);
-      if (files.discountDoc) submitData.append('indirim_belgesi', files.discountDoc);
+    // 2. Kural 2: Senaryolara Göre Dinamik Alanlar
+    const isKurs = formData.basvuru_tipi === 'Kurs Ön Kayıt';
+    const isSinav = formData.basvuru_tipi === 'Sınav Ön Kayıt';
+    const isYuzYuze = formData.egitim_sekli === 'Yüz Yüze';
+    const isCevrimIci = formData.egitim_sekli === 'Çevrim İçi';
+
+    if (isKurs && isYuzYuze) {
+      // SENARYO A
+      submitData.append('dil', formData.dil || '');
+      submitData.append('seviye', formData.seviye || '');
+      submitData.append('sube', formData.sube || '');
+      submitData.append('indirim', formData.indirim || '');
+      submitData.append('indirim_kodu', formData.indirim_kodu || '');
+      submitData.append('kayit_bilgi_notu', formData.kayit_bilgi_notu || '');
+      if (files?.identityDoc) submitData.append('kimlik_dosyasi', files.identityDoc);
+      if (files?.discountDoc) submitData.append('indirim_belgesi', files.discountDoc);
+    } 
+    else if (isKurs && isCevrimIci) {
+      // SENARYO B
+      submitData.append('dil', formData.dil || '');
+      submitData.append('seviye', formData.seviye || '');
+      submitData.append('sube', formData.sube || '');
+      submitData.append('indirim', formData.indirim || '');
+      submitData.append('indirim_kodu', formData.indirim_kodu || '');
+      submitData.append('kayit_bilgi_notu', formData.kayit_bilgi_notu || '');
+      submitData.append('vize_turu', formData.vize_turu || '');
+      submitData.append('kayit_turu', formData.kayit_turu || '');
+      submitData.append('vize_baslangic', formData.vize_baslangic || '');
+      submitData.append('vize_bitis', formData.vize_bitis || '');
+      submitData.append('turkiye_adresi', formData.turkiye_adresi || '');
+      submitData.append('ulke_adresi', formData.ulke_adresi || '');
+      submitData.append('ulke_telefonu', formData.ulke_telefonu || '');
+      if (files?.identityDoc) submitData.append('kimlik_dosyasi', files.identityDoc);
+      if (files?.discountDoc) submitData.append('indirim_belgesi', files.discountDoc);
+    } 
+    else if (isSinav && isYuzYuze) {
+      // SENARYO C
+      submitData.append('dil', formData.dil || '');
+      submitData.append('sinav_turu', formData.sinav_turu || '');
+      submitData.append('sube', formData.sube || '');
+      submitData.append('kayit_bilgi_notu', formData.kayit_bilgi_notu || '');
+      if (files?.identityDoc) submitData.append('kimlik_dosyasi', files.identityDoc);
+    } 
+    else if (isSinav && isCevrimIci) {
+      // SENARYO D
+      submitData.append('dil', formData.dil || '');
+      submitData.append('sinav_turu', formData.sinav_turu || '');
+      submitData.append('sube', formData.sube || '');
+      submitData.append('kayit_bilgi_notu', formData.kayit_bilgi_notu || '');
+      submitData.append('vize_turu', formData.vize_turu || '');
+      submitData.append('vize_baslangic', formData.vize_baslangic || '');
+      submitData.append('vize_bitis', formData.vize_bitis || '');
+      submitData.append('turkiye_adresi', formData.turkiye_adresi || '');
+      submitData.append('ulke_adresi', formData.ulke_adresi || '');
+      submitData.append('ulke_telefonu', formData.ulke_telefonu || '');
+      if (files?.identityDoc) submitData.append('kimlik_dosyasi', files.identityDoc);
     }
 
     try {
-      const response = await axios.post('http://localhost:8000/api/aday-kayit/', submitData, {
-        // FormData automatically handles the Content-Type boundary correctly.
-      });
+      // Kural 4: Tek merkezden /api/basvuru-yap/ adresine gönderim
+      const response = await TomerApi.submitApplication('basvuru-yap/', submitData);
 
       if (response.status === 201 || response.status === 200) {
         setSubmitStatus('success');
@@ -182,6 +224,7 @@ function App() {
               formData={formData}
               handleInputChange={handleInputChange}
               handleFileChange={handleFileChange}
+              options={options}
             />
 
             <StatusMessage submitStatus={submitStatus} />

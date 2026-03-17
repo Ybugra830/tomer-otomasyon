@@ -46,15 +46,25 @@ export default function ApplicationDetails({ formData, handleInputChange, option
                     </div>
                 </FormGroup>
 
-                <FormGroup label="Seviye / Level *">
-                    <div className="relative">
-                        <select name="seviye" value={formData.seviye} onChange={handleInputChange} required className="form-input-premium appearance-none pr-10">
-                            <option value="" disabled>Seçiniz / Select</option>
-                            {options.seviyeler.map(opt => <option key={opt.id} value={opt.id}>{opt.ad}</option>)}
+                {formData.basvuru_tipi === 'Sınav Ön Kayıt' ? (
+                    <FormGroup label="Sınav Türü / Exam Type *">
+                        <select name="sinav_turu" value={formData.sinav_turu || ''} onChange={handleInputChange} required className="form-select mt-1 w-full border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 p-2.5 border bg-white">
+                            <option value="">Seçiniz / Select</option>
+                            <option value="Türkçe Yeterlik Sınavı (TYS)">Türkçe Yeterlik Sınavı (TYS)</option>
+                            <option value="Seviye Tespit Sınavı (STS)">Seviye Tespit Sınavı (STS)</option>
                         </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
-                    </div>
-                </FormGroup>
+                    </FormGroup>
+                ) : (
+                    <FormGroup label="Seviye / Level *">
+                        <div className="relative">
+                            <select name="seviye" value={formData.seviye || ''} onChange={handleInputChange} required className="form-input-premium appearance-none pr-10">
+                                <option value="" disabled>Seçiniz / Select</option>
+                                {options.seviyeler.map(opt => <option key={opt.id} value={opt.id}>{opt.ad}</option>)}
+                            </select>
+                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+                        </div>
+                    </FormGroup>
+                )}
 
                 <FormGroup label="Şube / Branch *">
                     <div className="relative md:col-span-2 w-full md:w-[calc(50%-1rem)]">

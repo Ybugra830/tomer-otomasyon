@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import TomerApi from '../services/TomerApi';
 import { AlertCircle, UploadCloud, Info, CheckCircle2 } from 'lucide-react';
 
 const RegistrationForm = () => {
@@ -45,18 +45,13 @@ const RegistrationForm = () => {
         // Fetch options from API on mount
         const fetchOptions = async () => {
             try {
-                const [nationalitiesRes, languagesRes, levelsRes, branchesRes] = await Promise.all([
-                    axios.get('http://localhost:8000/api/uyruklar/').catch(() => ({ data: [{ id: 1, name: 'Türkiye' }, { id: 2, name: 'Diğer' }] })),
-                    axios.get('http://localhost:8000/api/diller/').catch(() => ({ data: [{ id: 1, name: 'Türkçe' }, { id: 2, name: 'İngilizce' }] })),
-                    axios.get('http://localhost:8000/api/seviyeler/').catch(() => ({ data: [{ id: 1, name: 'A1' }, { id: 2, name: 'A2' }, { id: 3, name: 'B1' }, { id: 4, name: 'B2' }, { id: 5, name: 'C1' }] })),
-                    axios.get('http://localhost:8000/api/subeler/').catch(() => ({ data: [{ id: 1, name: 'Merkez Kampüs' }, { id: 2, name: 'Şehir Şubesi' }] })),
-                ]);
+                const data = await TomerApi.fetchAllFormOptions();
 
                 setOptions({
-                    nationalities: nationalitiesRes.data,
-                    languages: languagesRes.data,
-                    levels: levelsRes.data,
-                    branches: branchesRes.data,
+                    nationalities: data.uyruklar || [],
+                    languages: data.diller || [],
+                    levels: data.seviyeler || [],
+                    branches: data.subeler || [],
                 });
             } catch (error) {
                 console.error('Error fetching form options:', error);
@@ -100,16 +95,12 @@ const RegistrationForm = () => {
         if (files.discountDoc) submitData.append('discountDoc', files.discountDoc);
 
         const endpoint = formData.applicationType === 'Kurs Ön Kayıt'
-            ? 'http://localhost:8000/api/kurs-basvuru/'
-            : 'http://localhost:8000/api/aday-kayit/';
+            ? 'kurs-basvuru/'
+            : 'aday-kayit/';
 
         try {
-            // Use axios POST wrapper, assuming it's correctly returning responses 
-            const response = await axios.post(endpoint, submitData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                }
-            });
+            // Use API service
+            const response = await TomerApi.submitApplication(endpoint, submitData);
             setSubmitStatus('success');
             console.log('Submission success:', response.data);
         } catch (error) {
