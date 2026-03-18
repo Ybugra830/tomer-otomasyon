@@ -171,3 +171,28 @@ def process_application(request):
         import traceback
         traceback.print_exc()
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def ogrenci_login(request):
+    tc_no = request.data.get('tc_pasaport_no')
+    soyad = request.data.get('soyad')
+
+    if not tc_no or not soyad:
+        return Response({'error': 'Kimlik No ve Soyad zorunludur.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        aday = Aday.objects.get(tc_pasaport_no=tc_no)
+        
+        if aday.soyad.strip().lower() == soyad.strip().lower():
+            return Response({
+                'message': 'Giriş başarılı',
+                'aday_id': aday.id,
+                'ad': aday.ad,
+                'soyad': aday.soyad
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Kimlik No veya Soyadı hatalı.'}, status=status.HTTP_401_UNAUTHORIZED)
+            
+    except Aday.DoesNotExist:
+        return Response({'error': 'Kimlik No veya Soyadı hatalı.'}, status=status.HTTP_401_UNAUTHORIZED)

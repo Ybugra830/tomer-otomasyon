@@ -12,4 +12,5 @@ urlpatterns = [
     
     # Post İstekleri (Kayıt Olma)
     path('basvuru-yap/', views.process_application, name='basvuru-yap'),
+    path('ogrenci-login/', views.ogrenci_login, name='ogrenci-login'),
 ]

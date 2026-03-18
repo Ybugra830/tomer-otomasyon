@@ -113,6 +113,16 @@ export const submitApplication = async (endpoint, formData) => {
   }
 };
 
+export const ogrenciLogin = async (formData) => {
+  try {
+    const response = await api.post('ogrenci-login/', formData);
+    return response;
+  } catch (error) {
+    console.error('Error logging in:', error);
+    throw error;
+  }
+};
+
 export default {
   getDiller,
   getSeviyeler,
@@ -122,4 +132,5 @@ export default {
   getSinavTurleri,
   fetchAllFormOptions,
   submitApplication,
+  ogrenciLogin,
 };

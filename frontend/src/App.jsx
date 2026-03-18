@@ -8,8 +8,11 @@ import PersonalDetails from './components/PersonalDetails';
 import StatusMessage from './components/StatusMessage';
 import BankInfo from './components/BankInfo';
 import SubmitButton from './components/SubmitButton';
+import Login from './components/Login';
 
 function App() {
+  const [currentView, setCurrentView] = useState('login');
+
   const [formData, setFormData] = useState({
     tc_pasaport_no: '',
     kimlik_tipi: 'TC',
@@ -207,12 +210,28 @@ function App() {
         <div className="absolute top-[10%] left-[5%] w-72 h-72 bg-emerald-300 rounded-full mix-blend-multiply filter blur-[100px] opacity-20 animate-blob"></div>
         <div className="absolute top-[20%] right-[5%] w-72 h-72 bg-teal-300 rounded-full mix-blend-multiply filter blur-[100px] opacity-30 animate-blob animation-delay-2000"></div>
 
-        <div className="w-full max-w-4xl bg-white/70 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 relative z-10 overflow-hidden">
-          <div className="h-2 w-full bg-gradient-to-r from-emerald-400 to-teal-400 absolute top-0 left-0"></div>
+        {currentView === 'login' ? (
+          <Login onGoToRegister={() => setCurrentView('register')} />
+        ) : (
+          <div className="w-full max-w-4xl bg-white/70 backdrop-blur-xl rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 relative z-10 overflow-hidden mt-8 md:mt-0">
+            <div className="h-2 w-full bg-gradient-to-r from-emerald-400 to-teal-400 absolute top-0 left-0"></div>
 
-          <WarningCard />
+            <div className="flex justify-between items-center px-6 md:px-10 pt-8 pb-4">
+               <div>
+                  <h2 className="text-2xl md:text-3xl font-bold text-slate-800">Kayıt Formu</h2>
+                  <p className="text-slate-500 mt-1">Lütfen bilgilerinizi eksiksiz doldurun.</p>
+               </div>
+               <button 
+                  onClick={() => setCurrentView('login')}
+                  className="px-4 py-2 bg-white text-emerald-600 font-semibold border border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50 rounded-xl transition-all shadow-sm"
+               >
+                  Giriş Yap
+               </button>
+            </div>
 
-          <form onSubmit={handleSubmit} className="px-6 md:px-10 pb-10 space-y-12">
+            <WarningCard />
+
+            <form onSubmit={handleSubmit} className="px-6 md:px-10 pb-10 space-y-12">
 
             <ApplicationDetails
               formData={formData}
@@ -236,6 +255,7 @@ function App() {
 
           </form>
         </div>
+        )}
       </main>
 
       <Footer />
