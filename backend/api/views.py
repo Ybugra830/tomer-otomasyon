@@ -195,6 +195,23 @@ def ogrenci_login(request):
         aday = Aday.objects.get(tc_pasaport_no=tc_no)
         
         if aday.soyad.strip().lower() == soyad.strip().lower():
+            
+            # 1. Adaya ait tüm başvuru tiplerini DB'den çek
+            k_yy = list(aday.kursyuzyuze_basvurulari.all())
+            k_ci = list(aday.kurscevrimici_basvurulari.all())
+            s_yy = list(aday.sinavyuzyuze_basvurulari.all())
+            s_ci = list(aday.sinavcevrimici_basvurulari.all())
+            
+            tum_basvurular = k_yy + k_ci + s_yy + s_ci
+            
+            # 2. Eğer en az 1 başvuru varsa VE hepsinin statüsü REDDEDILDI ise girişi engelle:
+            if tum_basvurular and all(b.durum == 'REDDEDILDI' for b in tum_basvurular):
+                return Response(
+                    {'error': 'Başvurunuz reddedildiği için sisteme girişiniz engellenmiştir. Lütfen kurumla iletişime geçin.'}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # 3. Herhangi bir normal durumda (onaylanan, bekleyen veya henüz hiç başvurusu olmayan)
             return Response({
                 'message': 'Giriş başarılı',
                 'aday_id': aday.id,

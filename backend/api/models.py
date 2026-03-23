@@ -1,4 +1,17 @@
+import os
+import uuid
 from django.db import models
+
+def get_kimlik_path(instance, filename):
+    ext = filename.split('.')[-1].lower()
+    filename = f"{uuid.uuid4()}.{ext}"
+    return os.path.join('kimlik_dosyalari', filename)
+
+def get_indirim_path(instance, filename):
+    ext = filename.split('.')[-1].lower()
+    filename = f"{uuid.uuid4()}.{ext}"
+    return os.path.join('indirim_belgeleri', filename)
+
 
 class Uyruk(models.Model):
     ad = models.CharField(max_length=100)
@@ -63,7 +76,7 @@ class BaseBasvuru(models.Model):
     aday = models.ForeignKey(Aday, on_delete=models.CASCADE, related_name='%(class)s_basvurulari')
     sube = models.ForeignKey(Sube, on_delete=models.SET_NULL, null=True)
     dil = models.ForeignKey(Dil, on_delete=models.SET_NULL, null=True)
-    kimlik_dosyasi = models.FileField(upload_to='kimlik_dosyalari/', blank=True, null=True)
+    kimlik_dosyasi = models.FileField(upload_to=get_kimlik_path, blank=True, null=True)
     kayit_bilgi_notu = models.TextField(blank=True, null=True)
     basvuru_tarihi = models.DateTimeField(auto_now_add=True)
     durum = models.CharField(max_length=20, choices=DURUM_CHOICES, default='BEKLIYOR')
@@ -82,13 +95,13 @@ class KursYuzYuze(BaseBasvuru):
     seviye = models.ForeignKey(Seviye, on_delete=models.SET_NULL, null=True)
     indirim = models.ForeignKey(IndirimTuru, on_delete=models.SET_NULL, null=True, blank=True)
     indirim_kodu = models.CharField(max_length=50, blank=True, null=True)
-    indirim_belgesi = models.FileField(upload_to='indirim_belgeleri/', blank=True, null=True)
+    indirim_belgesi = models.FileField(upload_to=get_indirim_path, blank=True, null=True)
 
 class KursCevrimIci(BaseBasvuru):
     seviye = models.ForeignKey(Seviye, on_delete=models.SET_NULL, null=True)
     indirim = models.ForeignKey(IndirimTuru, on_delete=models.SET_NULL, null=True, blank=True)
     indirim_kodu = models.CharField(max_length=50, blank=True, null=True)
-    indirim_belgesi = models.FileField(upload_to='indirim_belgeleri/', blank=True, null=True)
+    indirim_belgesi = models.FileField(upload_to=get_indirim_path, blank=True, null=True)
     vize_turu = models.CharField(max_length=100, blank=True, null=True)
     kayit_turu = models.CharField(max_length=100, blank=True, null=True)
     vize_baslangic = models.DateField(blank=True, null=True)
