@@ -67,6 +67,12 @@ class BaseBasvuru(models.Model):
     kayit_bilgi_notu = models.TextField(blank=True, null=True)
     basvuru_tarihi = models.DateTimeField(auto_now_add=True)
     durum = models.CharField(max_length=20, choices=DURUM_CHOICES, default='BEKLIYOR')
+    
+    # Hukuki Onay Alanları
+    onay_bilgiler_dogru = models.BooleanField(default=False)
+    onay_sorumluluk = models.BooleanField(default=False)
+    onay_fatura = models.BooleanField(default=False)
+    onay_kursiyerlik = models.BooleanField(default=False)
 
     class Meta:
         abstract = True

@@ -105,12 +105,22 @@ def process_application(request):
         sube_id = data.get('sube')
         dil_id = data.get('dil')
         
+        # Onayları string türünden gerçek Boolean türüne çevirme
+        onay_bilgiler_dogru = str(data.get('onay_bilgiler_dogru', '')).lower() == 'true'
+        onay_sorumluluk = str(data.get('onay_sorumluluk', '')).lower() == 'true'
+        onay_fatura = str(data.get('onay_fatura', '')).lower() == 'true'
+        onay_kursiyerlik = str(data.get('onay_kursiyerlik', '')).lower() == 'true'
+
         base_basvuru_data = {
             'aday': aday,
             'sube': Sube.objects.get(id=int(sube_id)) if sube_id and sube_id.isdigit() else None,
             'dil': Dil.objects.get(id=int(dil_id)) if dil_id and dil_id.isdigit() else None,
             'kimlik_dosyasi': files.get('kimlik_dosyasi'),
             'kayit_bilgi_notu': data.get('kayit_bilgi_notu', ''),
+            'onay_bilgiler_dogru': onay_bilgiler_dogru,
+            'onay_sorumluluk': onay_sorumluluk,
+            'onay_fatura': onay_fatura,
+            'onay_kursiyerlik': onay_kursiyerlik,
         }
 
         # Adım C: if/elif senaryo tablosu belirleme ve insert etme

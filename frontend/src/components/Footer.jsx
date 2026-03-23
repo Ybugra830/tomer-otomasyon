@@ -4,7 +4,7 @@ import logo from '../assets/DAİRESEL LOGO.png';
 
 export default function Footer() {
     return (
-        <footer className="bg-[#111111] text-gray-400 py-12 mt-auto relative z-10 font-medium">
+        <footer className="bg-slate-900 text-gray-400 py-12 mt-auto relative z-10 font-medium border-t border-slate-800">
             <div className="max-w-6xl mx-auto px-4 flex flex-col items-center">
 
                 {/* Links Grid */}

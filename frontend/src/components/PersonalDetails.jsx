@@ -5,7 +5,7 @@ export default function PersonalDetails({ formData, handleInputChange, handleFil
     return (
         <section className="space-y-6">
             <div className="flex items-center pb-4 border-b border-slate-200/60">
-                <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-100 to-emerald-50 text-emerald-600 font-bold text-lg flex items-center justify-center mr-4 shadow-inner border border-emerald-200/50">2</span>
+                <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 text-blue-700 font-bold text-lg flex items-center justify-center mr-4 shadow-inner border border-blue-200/50">2</span>
                 <div>
                     <h2 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">Kişisel Bilgiler</h2>
                     <p className="text-xs font-medium text-slate-400 uppercase tracking-widest mt-0.5">Personal Details</p>
@@ -20,7 +20,7 @@ export default function PersonalDetails({ formData, handleInputChange, handleFil
                         { label: 'Pasaport', value: 'PASAPORT' },
                         { label: 'ID Kart', value: 'ID_KART' }
                     ].map(type => (
-                        <label key={type.value} className={`flex items-center justify-center px-4 py-3 rounded-xl cursor-pointer transition-all border text-center ${formData.kimlik_tipi === type.value ? 'bg-emerald-50 border-emerald-400 text-emerald-700 shadow-inner' : 'bg-white/60 border-slate-200 text-slate-600 hover:bg-white hover:border-emerald-300'}`}>
+                        <label key={type.value} className={`flex items-center justify-center px-4 py-3 rounded-xl cursor-pointer transition-all border text-center ${formData.kimlik_tipi === type.value ? 'bg-blue-50 border-blue-400 text-blue-700 shadow-inner' : 'bg-white/60 border-slate-200 text-slate-600 hover:bg-white hover:border-blue-300'}`}>
                             <input type="radio" name="kimlik_tipi" value={type.value} checked={formData.kimlik_tipi === type.value} onChange={handleInputChange} className="hidden" required />
                             <span className="text-xs sm:text-sm font-medium leading-tight">{type.label}</span>
                         </label>
@@ -181,7 +181,7 @@ export default function PersonalDetails({ formData, handleInputChange, handleFil
 
             <div className={`grid grid-cols-1 ${formData.basvuru_tipi === 'Kurs Ön Kayıt' && formData.egitim_sekli === 'Yüz Yüze' ? 'md:grid-cols-2' : ''} gap-x-8 gap-y-6 pt-4 border-t border-slate-200/60 mt-6`}>
                 <FormGroup label="Kimlik Belgesi / Identity Document *">
-                    <input type="file" name="identityDoc" onChange={handleFileChange} required className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all cursor-pointer border border-slate-200 rounded-xl p-2 bg-white/50" accept=".pdf,.jpg,.jpeg,.png" />
+                    <input type="file" name="identityDoc" onChange={handleFileChange} required className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all cursor-pointer border border-slate-200 rounded-xl p-2 bg-white/50" accept=".pdf,.jpg,.jpeg,.png" />
                     <p className="text-xs text-slate-400 mt-1">Dosya seçilmedi</p>
                 </FormGroup>
 
@@ -211,22 +211,22 @@ export default function PersonalDetails({ formData, handleInputChange, handleFil
             {/* Checkboxes Section */}
             <div className="space-y-4 pt-6 border-t border-slate-200/60 mt-6 text-sm text-slate-600">
                 <label className="flex items-start space-x-3 cursor-pointer group">
-                    <input type="checkbox" name="onay_bilgiler_dogru" checked={formData.onay_bilgiler_dogru || false} onChange={handleInputChange} required className="mt-1 w-4 h-4 rounded border-slate-300 text-emerald-500 focus:ring-emerald-500" />
+                    <input type="checkbox" name="onay_bilgiler_dogru" checked={formData.onay_bilgiler_dogru || false} onChange={handleInputChange} required className="mt-1 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
                     <span className="leading-relaxed group-hover:text-slate-800 transition-colors">-Bu formda yazan ve web sitesinde bulunan bütün bilgileri eksiksiz okuduğumu teyit ediyorum.</span>
                 </label>
 
                 <label className="flex items-start space-x-3 cursor-pointer group">
-                    <input type="checkbox" name="onay_sorumluluk" checked={formData.onay_sorumluluk || false} onChange={handleInputChange} required className="mt-1 w-4 h-4 rounded border-slate-300 text-emerald-500 focus:ring-emerald-500" />
+                    <input type="checkbox" name="onay_sorumluluk" checked={formData.onay_sorumluluk || false} onChange={handleInputChange} required className="mt-1 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
                     <span className="leading-relaxed group-hover:text-slate-800 transition-colors">-Tarafımca yukarıda vermiş olduğum bilgilerin doğruluğunu ve bilgilerin hatalı olması durumunda doğacak yükümlülüğü kabul ediyorum. Düzenlenecek belge (diploma-sertifika-katılım belgeleri) formda beyan ettiğiniz bilgilere göre hazırlanacaktır.</span>
                 </label>
 
                 <label className="flex items-start space-x-3 cursor-pointer group">
-                    <input type="checkbox" name="onay_fatura" checked={formData.onay_fatura || false} onChange={handleInputChange} required className="mt-1 w-4 h-4 rounded border-slate-300 text-emerald-500 focus:ring-emerald-500" />
+                    <input type="checkbox" name="onay_fatura" checked={formData.onay_fatura || false} onChange={handleInputChange} required className="mt-1 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
                     <span className="leading-relaxed group-hover:text-slate-800 transition-colors">-Sınav veya kursa dair faturanın kişi yerine şirket adına kesilmesini isteyenler şirkete dair gerekli bilgileri sınav tarihi itibariyle ödeme dekontuyla birlikte gün içerisinde ilgili şubeye e-posta olarak iletmelidir. Aksi takdirde fatura bilgilerinde değişiklik yapılamayacaktır.</span>
                 </label>
 
-                <label className="flex items-start space-x-3 cursor-pointer group text-blue-500 hover:text-blue-600 font-medium mt-2">
-                    <input type="checkbox" name="onay_kursiyerlik" checked={formData.onay_kursiyerlik || false} onChange={handleInputChange} required className="mt-1 w-4 h-4 rounded border-blue-300 text-blue-500 focus:ring-blue-500" />
+                <label className="flex items-start space-x-3 cursor-pointer group text-blue-600 hover:text-blue-700 font-medium mt-2">
+                    <input type="checkbox" name="onay_kursiyerlik" checked={formData.onay_kursiyerlik || false} onChange={handleInputChange} required className="mt-1 w-4 h-4 rounded border-blue-400 text-blue-600 focus:ring-blue-500" />
                     <span className="leading-relaxed ml-1 hover:underline">Kursiyerlik Koşullarını Okudum, Kabul Ediyorum</span>
                 </label>
             </div>

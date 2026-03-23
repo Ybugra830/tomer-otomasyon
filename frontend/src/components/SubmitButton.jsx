@@ -5,7 +5,7 @@ export default function SubmitButton({ submitStatus }) {
         <button
             type="submit"
             disabled={submitStatus === 'submitting'}
-            className="w-full bg-[#5cb85c] hover:bg-[#4cae4c] disabled:opacity-50 text-white font-bold text-sm py-4 rounded-sm shadow-sm transition-colors flex justify-center items-center mt-2"
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-sm py-4 rounded-xl shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] transition-all flex justify-center items-center mt-2"
         >
             {submitStatus === 'submitting' ? (
                 <span className="flex items-center space-x-3">
