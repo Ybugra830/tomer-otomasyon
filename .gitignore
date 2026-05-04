@@ -12,3 +12,10 @@ frontend/dist/
 /backend/media/
 media/
 __pycache__/
+
+# Medya ve Cache Gizliliği
+/backend/media/
+/backend/kimlik_dosyalari/
+/backend/indirim_belgeleri/
+media/
+__pycache__/
