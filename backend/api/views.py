@@ -223,3 +223,57 @@ def ogrenci_login(request):
             
     except Aday.DoesNotExist:
         return Response({'error': 'Kimlik No veya Soyadı hatalı.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+@api_view(['GET'])
+def get_admin_dashboard_data(request):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return Response({"error": "Bu işlem için yetkiniz yok."}, status=status.HTTP_403_FORBIDDEN)
+        
+    data = []
+    
+    # KursYuzYuze
+    kyy = KursYuzYuze.objects.filter(durum='BEKLIYOR').select_related('aday')
+    for b in kyy:
+        kimlik_url = request.build_absolute_uri(b.kimlik_dosyasi.url) if b.kimlik_dosyasi and b.kimlik_dosyasi.name else None
+        data.append({
+            'ad_soyad': f"{b.aday.ad} {b.aday.soyad}",
+            'tc': b.aday.tc_pasaport_no,
+            'basvuru_turu': 'Yüz Yüze Kurs',
+            'kimlik_dosyasi_url': kimlik_url
+        })
+        
+    # KursCevrimIci
+    kci = KursCevrimIci.objects.filter(durum='BEKLIYOR').select_related('aday')
+    for b in kci:
+        kimlik_url = request.build_absolute_uri(b.kimlik_dosyasi.url) if b.kimlik_dosyasi and b.kimlik_dosyasi.name else None
+        data.append({
+            'ad_soyad': f"{b.aday.ad} {b.aday.soyad}",
+            'tc': b.aday.tc_pasaport_no,
+            'basvuru_turu': 'Çevrim İçi Kurs',
+            'kimlik_dosyasi_url': kimlik_url
+        })
+        
+    # SinavYuzYuze
+    syy = SinavYuzYuze.objects.filter(durum='BEKLIYOR').select_related('aday')
+    for b in syy:
+        kimlik_url = request.build_absolute_uri(b.kimlik_dosyasi.url) if b.kimlik_dosyasi and b.kimlik_dosyasi.name else None
+        data.append({
+            'ad_soyad': f"{b.aday.ad} {b.aday.soyad}",
+            'tc': b.aday.tc_pasaport_no,
+            'basvuru_turu': 'Yüz Yüze Sınav',
+            'kimlik_dosyasi_url': kimlik_url
+        })
+        
+    # SinavCevrimIci
+    sci = SinavCevrimIci.objects.filter(durum='BEKLIYOR').select_related('aday')
+    for b in sci:
+        kimlik_url = request.build_absolute_uri(b.kimlik_dosyasi.url) if b.kimlik_dosyasi and b.kimlik_dosyasi.name else None
+        data.append({
+            'ad_soyad': f"{b.aday.ad} {b.aday.soyad}",
+            'tc': b.aday.tc_pasaport_no,
+            'basvuru_turu': 'Çevrim İçi Sınav',
+            'kimlik_dosyasi_url': kimlik_url
+        })
+        
+    return Response(data, status=status.HTTP_200_OK)

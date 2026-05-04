@@ -13,4 +13,7 @@ urlpatterns = [
     # Post İstekleri (Kayıt Olma)
     path('basvuru-yap/', views.process_application, name='basvuru-yap'),
     path('ogrenci-login/', views.ogrenci_login, name='ogrenci-login'),
+    
+    # Admin Paneli Endpoints
+    path('admin-dashboard-bekleyenler/', views.get_admin_dashboard_data, name='admin-dashboard-bekleyenler'),
 ]
