@@ -115,10 +115,40 @@ export const submitApplication = async (endpoint, formData) => {
 
 export const ogrenciLogin = async (formData) => {
   try {
-    const response = await api.post('ogrenci-login/', formData);
+    const response = await api.post('http://127.0.0.1:8000/api/accounts/login/student/', formData);
     return response;
   } catch (error) {
     console.error('Error logging in:', error);
+    throw error;
+  }
+};
+
+export const getStudentProfile = async () => {
+  try {
+    const token = localStorage.getItem('access') || localStorage.getItem('access_token');
+    const response = await api.get('accounts/profile/', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching student profile:', error);
+    throw error;
+  }
+};
+
+export const getMyPendingExams = async () => {
+  try {
+    const token = localStorage.getItem('access') || localStorage.getItem('access_token');
+    const response = await api.get('exams/my-assignments/', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching pending exams:', error);
     throw error;
   }
 };
@@ -133,4 +163,6 @@ export default {
   fetchAllFormOptions,
   submitApplication,
   ogrenciLogin,
+  getStudentProfile,
+  getMyPendingExams,
 };

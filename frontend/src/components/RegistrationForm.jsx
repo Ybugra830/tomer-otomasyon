@@ -94,9 +94,7 @@ const RegistrationForm = () => {
         if (files.identityDoc) submitData.append('identityDoc', files.identityDoc);
         if (files.discountDoc) submitData.append('discountDoc', files.discountDoc);
 
-        const endpoint = formData.applicationType === 'Kurs Ön Kayıt'
-            ? 'kurs-basvuru/'
-            : 'aday-kayit/';
+        const endpoint = 'basvuru-yap/';
 
         try {
             // Use API service

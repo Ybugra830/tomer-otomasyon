@@ -6,6 +6,7 @@ from .models import (
     Uyruk, Dil, Seviye, Sube, IndirimTuru, SinavTuru,
     Aday, KursYuzYuze, KursCevrimIci, SinavYuzYuze, SinavCevrimIci
 )
+from django.utils import timezone
 
 # 1. REFERANS VERİLERİ (SADECE OKUMA - GET)
 
@@ -174,7 +175,23 @@ def process_application(request):
         else:
             return Response({"error": f"Bilinmeyen başvuru kombinasyonu: {basvuru_tipi} / {egitim_sekli}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Adım D: İşlem bitimi ve 201 dönüşü
+        # Adım D: Eşzamanlı CustomUser oluşturma (accounts altyapısı için)
+        try:
+            from accounts.models import CustomUser
+            if not CustomUser.objects.filter(username=tc_pasaport_no).exists():
+                user = CustomUser(
+                    username=tc_pasaport_no,
+                    last_name=data.get('soyad', ''),
+                    first_name=data.get('ad', ''),
+                    user_type='STUDENT',
+                    is_active=False  # Süper admin onaylayana kadar pasif kalacak
+                )
+                user.set_password(data.get('password'))  # Frontend'den gelen şifreyi kriptolayarak kaydet
+                user.save()
+        except Exception as e:
+            print(f"CustomUser oluşturulurken hata: {e}")
+
+        # Adım E: İşlem bitimi ve 201 dönüşü
         return Response({"message": "Başvuru başarıyla alındı", "basvuru_id": basvuru.id}, status=status.HTTP_201_CREATED)
 
     except Exception as e:
@@ -226,54 +243,182 @@ def ogrenci_login(request):
 
 
 @api_view(['GET'])
+def get_dashboard_stats(request):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return Response({"error": "Bu işlem için yetkiniz yok."}, status=status.HTTP_403_FORBIDDEN)
+        
+    try:
+        from accounts.models import CustomUser
+        from exams.models import StudentExamSession
+        
+        total_students = CustomUser.objects.filter(user_type='STUDENT').count()
+        active_instructors = CustomUser.objects.filter(user_type='INSTRUCTOR').count()
+        
+        pending_approvals = sum([
+            KursYuzYuze.objects.filter(durum='BEKLIYOR').count(),
+            KursCevrimIci.objects.filter(durum='BEKLIYOR').count(),
+            SinavYuzYuze.objects.filter(durum='BEKLIYOR').count(),
+            SinavCevrimIci.objects.filter(durum='BEKLIYOR').count(),
+        ])
+        
+        today = timezone.now().date()
+        exams_solved_today = StudentExamSession.objects.filter(
+            is_completed=True,
+            started_at__date=today
+        ).count()
+        
+        all_apps = []
+        for model in [KursYuzYuze, KursCevrimIci, SinavYuzYuze, SinavCevrimIci]:
+            for b in model.objects.select_related('aday').order_by('-basvuru_tarihi')[:5]:
+                all_apps.append({
+                    'id': f"APP-{b.id:03d}",
+                    'ad_soyad': f"{b.aday.ad} {b.aday.soyad}",
+                    'basvuru_tarihi': b.basvuru_tarihi.strftime("%d.%m.%Y %H:%M"),
+                    'durum': dict(b.DURUM_CHOICES).get(b.durum, b.durum) if hasattr(b, 'DURUM_CHOICES') else b.durum,
+                    'real_date': b.basvuru_tarihi
+                })
+        
+        all_apps.sort(key=lambda x: x['real_date'], reverse=True)
+        recent_applications = [{k: v for k, v in app.items() if k != 'real_date'} for app in all_apps[:5]]
+        
+        return Response({
+            "total_students": total_students,
+            "active_instructors": active_instructors,
+            "pending_approvals": pending_approvals,
+            "exams_solved_today": exams_solved_today,
+            "recent_applications": recent_applications
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
 def get_admin_dashboard_data(request):
     if not request.user.is_authenticated or not request.user.is_staff:
         return Response({"error": "Bu işlem için yetkiniz yok."}, status=status.HTTP_403_FORBIDDEN)
         
     data = []
     
-    # KursYuzYuze
-    kyy = KursYuzYuze.objects.filter(durum='BEKLIYOR').select_related('aday')
-    for b in kyy:
-        kimlik_url = request.build_absolute_uri(b.kimlik_dosyasi.url) if b.kimlik_dosyasi and b.kimlik_dosyasi.name else None
-        data.append({
-            'ad_soyad': f"{b.aday.ad} {b.aday.soyad}",
-            'tc': b.aday.tc_pasaport_no,
-            'basvuru_turu': 'Yüz Yüze Kurs',
-            'kimlik_dosyasi_url': kimlik_url
-        })
+    try:
+        from accounts.models import CustomUser, StudentProfile
         
-    # KursCevrimIci
-    kci = KursCevrimIci.objects.filter(durum='BEKLIYOR').select_related('aday')
-    for b in kci:
-        kimlik_url = request.build_absolute_uri(b.kimlik_dosyasi.url) if b.kimlik_dosyasi and b.kimlik_dosyasi.name else None
-        data.append({
-            'ad_soyad': f"{b.aday.ad} {b.aday.soyad}",
-            'tc': b.aday.tc_pasaport_no,
-            'basvuru_turu': 'Çevrim İçi Kurs',
-            'kimlik_dosyasi_url': kimlik_url
-        })
+        # Sistemdeki TÜM öğrencileri Admin panelinde listelesin
+        pending_users = CustomUser.objects.filter(user_type='STUDENT').order_by('-date_joined')
         
-    # SinavYuzYuze
-    syy = SinavYuzYuze.objects.filter(durum='BEKLIYOR').select_related('aday')
-    for b in syy:
-        kimlik_url = request.build_absolute_uri(b.kimlik_dosyasi.url) if b.kimlik_dosyasi and b.kimlik_dosyasi.name else None
-        data.append({
-            'ad_soyad': f"{b.aday.ad} {b.aday.soyad}",
-            'tc': b.aday.tc_pasaport_no,
-            'basvuru_turu': 'Yüz Yüze Sınav',
-            'kimlik_dosyasi_url': kimlik_url
-        })
-        
-    # SinavCevrimIci
-    sci = SinavCevrimIci.objects.filter(durum='BEKLIYOR').select_related('aday')
-    for b in sci:
-        kimlik_url = request.build_absolute_uri(b.kimlik_dosyasi.url) if b.kimlik_dosyasi and b.kimlik_dosyasi.name else None
-        data.append({
-            'ad_soyad': f"{b.aday.ad} {b.aday.soyad}",
-            'tc': b.aday.tc_pasaport_no,
-            'basvuru_turu': 'Çevrim İçi Sınav',
-            'kimlik_dosyasi_url': kimlik_url
-        })
-        
+        for user in pending_users:
+            profile = StudentProfile.objects.filter(user=user).first()
+            
+            # Application tipleri için display formatları
+            basvuru_turu = 'Belirtilmiyor'
+            kimlik_url = None
+            
+            if profile:
+                basvuru_turu = profile.get_application_type_display() if profile.application_type else 'Genel Başvuru'
+                if profile.identity_document and profile.identity_document.name:
+                    kimlik_url = request.build_absolute_uri(profile.identity_document.url)
+                    
+            data.append({
+                'ad_soyad': f"{user.first_name} {user.last_name}",
+                'tc': user.username,
+                'basvuru_turu': basvuru_turu,
+                'kimlik_dosyasi_url': kimlik_url
+            })
+            
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     return Response(data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def get_application_detail(request, tc_no):
+    """Süper Admin: Bir adayın tüm detay bilgilerini getirir (StudentProfile'dan)."""
+    try:
+        from accounts.models import CustomUser, StudentProfile
+        user = CustomUser.objects.get(username=tc_no)
+        profile = StudentProfile.objects.filter(user=user).first()
+    except Exception:
+        return Response({"error": "Aday bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
+
+    # Aday temel bilgileri (eski format ile uyumlu)
+    aday_data = {
+        'id': user.id,
+        'tc_pasaport_no': user.username,
+        'kimlik_tipi': profile.get_identity_type_display() if profile and profile.identity_type else '-',
+        'ad': user.first_name,
+        'soyad': user.last_name,
+        'telefon1': profile.phone if profile and profile.phone else '-',
+        'telefon2': profile.phone_secondary if profile and profile.phone_secondary else '-',
+        'eposta': user.email,
+        'baba_adi': profile.father_name if profile and profile.father_name else '-',
+        'anne_adi': profile.mother_name if profile and profile.mother_name else '-',
+        'dogum_yeri': profile.place_of_birth if profile and profile.place_of_birth else '-',
+        'dogum_tarihi': str(profile.date_of_birth) if profile and profile.date_of_birth else '-',
+        'uyruk': profile.nationality if profile and profile.nationality else '-',
+    }
+
+    # Tüm başvurularını topla
+    basvurular = []
+
+    def build_file_url(file_field):
+        if file_field and hasattr(file_field, 'name') and file_field.name:
+            return request.build_absolute_uri(file_field.url)
+        return None
+
+    # Tüm başvurularını topla (StudentProfile için tek bir sanal başvuru oluşturuyoruz 
+    # çünkü artık Minimalist form + Profil Tamamlama var)
+    basvurular = []
+    
+    if profile:
+        entry = {
+            'basvuru_id': profile.id, # Profil id'si basvuru db mantığını simüle etmek için
+            'basvuru_turu': profile.get_application_type_display() if profile.application_type else 'Kurs / Sınav',
+            'durum': 'BEKLIYOR' if not user.is_active else 'KESIN_KAYIT',
+            'basvuru_tarihi': str(user.date_joined.date()),
+            'sube': profile.branch or '-',
+            'dil': profile.language or '-',
+            'seviye': profile.level or '-',
+            'kimlik_dosyasi_url': build_file_url(profile.identity_document),
+            'indirim_belgesi_url': build_file_url(profile.discount_document),
+            'kayit_bilgi_notu': profile.additional_notes or '',
+        }
+        basvurular.append(entry)
+
+    return Response({'aday': aday_data, 'basvurular': basvurular}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+def review_student_application(request, user_id):
+    """Süper Admin: Başvuruyu onayla veya reddet."""
+    action = request.data.get('action') # 'approve' veya 'reject'
+
+    try:
+        from accounts.models import CustomUser, StudentProfile
+        # Frontend tc_no gönderiyor. user_id string = tc_no
+        user = CustomUser.objects.get(username=user_id)
+
+        if action == 'approve':
+            user.is_active = True
+            user.save()
+            
+            prof = StudentProfile.objects.filter(user=user).first()
+            if prof:
+                prof.is_approved = True
+                prof.save()
+            return Response({"message": "Öğrenci kaydı başarıyla onaylandı."}, status=status.HTTP_200_OK)
+            
+        elif action == 'reject':
+            user.delete() # CASCADE olduğu için profil de silinir.
+            return Response({"message": "Öğrenci kaydı reddedildi ve sistemden silindi."}, status=status.HTTP_200_OK)
+        
+        else:
+            return Response({"error": "Geçersiz işlem."}, status=status.HTTP_400_BAD_REQUEST)
+
+    except CustomUser.DoesNotExist:
+        return Response({"error": "Öğrenci bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": f"İşlem başarısız: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

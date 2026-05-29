@@ -37,6 +37,12 @@ export default function PersonalDetails({ formData, handleInputChange, handleFil
                     <input type="text" name="soyad" value={formData.soyad || ''} onChange={handleInputChange} required className="form-input-premium" placeholder="Soyadınız..." />
                 </FormGroup>
 
+                <div className="md:col-span-2">
+                    <FormGroup label="Sistem Şifresi / Password *">
+                        <input type="password" name="password" value={formData.password || ''} onChange={handleInputChange} required className="form-input-premium" placeholder="Sisteme giriş için kullanacağınız şifre..." />
+                    </FormGroup>
+                </div>
+
                 <FormGroup label="Uyruk / Nationality *">
                     <div className="relative">
                         <select name="uyruk" value={formData.uyruk || ''} onChange={handleInputChange} required className="form-input-premium appearance-none pr-10">
