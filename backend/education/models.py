@@ -38,3 +38,19 @@ class InstructorTask(models.Model):
     supplementary_file = models.FileField(upload_to='materials/extras/', null=True, blank=True)
     is_completed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class LiveClass(models.Model):
+    instructor = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE,
+        related_name='live_classes',
+        limit_choices_to={'user_type': 'INSTRUCTOR'}
+    )
+    meet_link = models.URLField(max_length=500)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        tag = "AKTİF" if self.is_active else "Pasif"
+        return f"[{tag}] {self.instructor.first_name} {self.instructor.last_name}"
+

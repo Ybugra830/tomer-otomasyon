@@ -1,139 +1,117 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import StudentSidebar from '../components/StudentSidebar';
-import { Video, Radio, PlayCircle, Calendar, Clock, User, ChevronRight } from 'lucide-react';
-
-const activeClass = {
-  title: 'B1 İleri Seviye Konuşma Pratiği',
-  teacher: 'Haluk Hoca',
-  startTime: '10:00',
-  status: 'Live'
-};
-
-const upcomingClasses = [
-  { id: 1, title: 'B1 Dinleme ve Anlama', date: 'Yarın', time: '14:00' },
-  { id: 2, title: 'Gramer: İfade Ediliş Biçimleri', date: '12 Mayıs', time: '10:00' },
-  { id: 3, title: 'Serbest Konuşma Kulübü', date: '14 Mayıs', time: '16:00' }
-];
-
-const pastRecordings = [
-  { id: 1, title: 'B1 Okuma Stratejileri', duration: '45 Dk', date: '05 Mayıs 2026' },
-  { id: 2, title: 'Gramer: Şartlı Cümleler Tekrarı', duration: '55 Dk', date: '03 Mayıs 2026' },
-  { id: 3, title: 'Kelime Bilgisi Çalışması', duration: '40 Dk', date: '01 Mayıs 2026' }
-];
+import { Video, Radio, Loader2 } from 'lucide-react';
+import axios from 'axios';
 
 const LiveClasses = () => {
+  const [liveData, setLiveData] = useState({ is_active: false, meet_link: null, message: '', instructor_name: '' });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLiveClass = async () => {
+      try {
+        const token = localStorage.getItem('access_token') || localStorage.getItem('access');
+        const res = await axios.get('http://127.0.0.1:8000/api/education/student/live-class/', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setLiveData(res.data);
+      } catch (err) {
+        console.error('Canlı ders verisi çekilemedi:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchLiveClass();
+  }, []);
+
   return (
     <div className="w-full min-h-[85vh] flex flex-col md:flex-row rounded-2xl overflow-hidden shadow-2xl border border-slate-200">
-      
+
       {/* Sidebar */}
       <StudentSidebar />
 
       {/* Main Content */}
-      <main className="flex-grow bg-slate-50 p-6 md:p-10 overflow-auto">
-        <div className="max-w-6xl mx-auto space-y-8">
-          
+      <main className="flex-grow bg-slate-50 p-6 md:p-10 flex flex-col pt-10">
+        <div className="max-w-4xl mx-auto w-full space-y-8 flex-grow flex flex-col">
+
+          {/* Header */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex items-center gap-4">
             <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center shrink-0">
               <Video className="w-6 h-6 text-indigo-600" />
             </div>
             <div>
               <h1 className="text-3xl font-bold text-slate-800">Canlı Dersler</h1>
-              <p className="text-slate-500 mt-1">Sanal sınıflarınıza katılabilir, haftalık programınızı ve geçmiş kayıtları görebilirsiniz.</p>
+              <p className="text-slate-500 mt-1">Eğitmeninizin başlattığı canlı yayınlara buradan anında katılabilirsiniz.</p>
             </div>
           </div>
 
-          {/* Hero Section: Aktif Ders */}
-          <div className="bg-slate-900 rounded-3xl p-8 shadow-lg relative overflow-hidden text-white border border-slate-800">
-            {/* Background Decoration */}
-            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-              <Radio className="w-64 h-64 -mt-10 -mr-10" />
-            </div>
-            
-            <div className="relative z-10">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-500/20 border border-red-500/50 rounded-full mb-6 shadow-sm">
-                <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
-                <span className="text-red-400 text-xs font-bold tracking-wider">CANLI YAYIN</span>
+          {/* Dinamik İçerik (KISS Prensibi) */}
+          <div className="flex-grow flex flex-col justify-center items-center -mt-10">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center text-indigo-500">
+                <Loader2 className="w-12 h-12 animate-spin mb-4" />
+                <p className="font-bold">Bağlantı kontrol ediliyor...</p>
               </div>
-              
-              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div>
-                  <h2 className="text-3xl md:text-4xl font-extrabold mb-4 text-white drop-shadow-sm tracking-tight">{activeClass.title}</h2>
-                  <div className="flex flex-wrap items-center gap-6 text-slate-300 font-medium text-sm">
-                    <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700/50">
-                      <User className="w-4 h-4 text-indigo-400" />
-                      {activeClass.teacher}
-                    </div>
-                    <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700/50">
-                      <Clock className="w-4 h-4 text-indigo-400" />
-                      Başlama: <span className="text-white font-bold">{activeClass.startTime}</span>
+            ) : liveData.is_active ? (
+
+              // AKTİF CANLI YAYIN DURUMU
+              <div className="w-full max-w-2xl bg-slate-900 rounded-3xl p-10 shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative overflow-hidden text-center border border-slate-800 transform hover:scale-[1.02] transition-transform duration-500">
+
+                {/* Arkaplan Dekorasyon */}
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/30 to-slate-900"></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <Radio className="absolute -top-10 -right-10 w-64 h-64 text-white opacity-5" />
+
+                <div className="relative z-10 flex flex-col items-center">
+
+                  {/* Pulsasyon (Dalgalanma) Efekti */}
+                  <div className="relative flex justify-center items-center mb-8">
+                    <div className="absolute w-24 h-24 bg-red-500 rounded-full animate-ping opacity-20"></div>
+                    <div className="absolute w-16 h-16 bg-red-500 rounded-full animate-pulse opacity-40"></div>
+                    <div className="w-8 h-8 md:w-10 md:h-10 bg-red-500 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(239,68,68,0.8)] z-10 border-4 border-slate-900">
                     </div>
                   </div>
+
+                  <span className="text-red-400 font-extrabold tracking-widest text-sm mb-3">CANLI YAYIN BAŞLADI</span>
+
+                  <h2 className="text-3xl md:text-5xl font-black text-white mb-3">
+                    {liveData.instructor_name}
+                  </h2>
+                  <p className="text-slate-300 font-medium mb-10 pb-6 border-b border-slate-700/50 w-3/4 mx-auto">
+                    Öğretmeniniz derse başladı. Katılmak için aşağıdaki butona tıklayın.
+                  </p>
+
+                  {/* Dev Katılım Butonu */}
+                  <a
+                    href={liveData.meet_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group relative inline-flex items-center justify-center px-10 py-5 font-bold text-white transition-all duration-300 bg-emerald-500 rounded-2xl hover:bg-emerald-400 hover:scale-105 shadow-[0_0_40px_rgba(16,185,129,0.4)] hover:shadow-[0_0_60px_rgba(16,185,129,0.6)]"
+                  >
+                    <Video className="w-7 h-7 mr-3 group-hover:animate-bounce" />
+                    <span className="text-xl tracking-wide uppercase">Hemen Derse Katıl</span>
+                  </a>
+
                 </div>
-                
-                <button className="w-full md:w-auto px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] flex items-center justify-center gap-2 shrink-0 group">
-                  <Video className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  Hemen Derse Katıl
-                </button>
               </div>
-            </div>
-          </div>
 
-          {/* 2 Kolon Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            {/* Sol Kolon: Yaklaşan Dersler */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-              <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                <Calendar className="w-6 h-6 text-indigo-600" />
-                Yaklaşan Dersler
-              </h3>
-              <div className="space-y-4">
-                {upcomingClasses.map(cls => (
-                  <div key={cls.id} className="flex items-center p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-indigo-50 hover:border-indigo-100 transition-colors group">
-                    <div className="w-24 shrink-0 text-center border-r border-slate-200 pr-4 mr-4 group-hover:border-indigo-200 transition-colors">
-                      <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">{cls.date}</div>
-                      <div className="text-xl font-black text-indigo-600">{cls.time}</div>
-                    </div>
-                    <div className="flex-grow">
-                      <h4 className="font-bold text-slate-800 text-[15px]">{cls.title}</h4>
-                      <p className="text-xs text-slate-500 mt-1 font-medium">Sanal Sınıf</p>
-                    </div>
-                  </div>
-                ))}
+            ) : (
+
+              // YAYIN YOK DURUMU (Fallback)
+              <div className="text-center py-20 px-8 bg-white rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center w-full max-w-xl">
+                <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6 border border-slate-100">
+                  <Radio className="w-10 h-10 text-slate-300" />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-700 mb-3 block">Yayın Bekleniyor</h3>
+                <p className="text-slate-500 font-medium text-lg">
+                  {liveData.message || 'Şu an aktif bir canlı yayın bulunmuyor.'}
+                </p>
+                <div className="mt-8 px-6 py-3 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-sm">
+                  Ders saatinizde sayfayı yenileyiniz.
+                </div>
               </div>
-            </div>
 
-            {/* Sağ Kolon: Geçmiş Kayıtlar */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col h-full">
-              <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                <PlayCircle className="w-6 h-6 text-indigo-600" />
-                Geçmiş Kayıtlar
-              </h3>
-              <div className="space-y-4 flex-grow">
-                {pastRecordings.map(rec => (
-                  <div key={rec.id} className="flex items-center gap-4 p-3 rounded-xl border border-slate-100 bg-white hover:shadow-md transition-all group cursor-pointer">
-                    <div className="w-28 h-16 bg-slate-200 rounded-lg flex items-center justify-center shrink-0 relative overflow-hidden">
-                      <div className="absolute inset-0 bg-slate-800/10 group-hover:bg-slate-800/20 transition-colors"></div>
-                      <PlayCircle className="w-8 h-8 text-white drop-shadow-md relative z-10 group-hover:scale-110 transition-transform" />
-                    </div>
-                    <div className="flex-grow min-w-0">
-                      <h4 className="font-bold text-sm text-slate-800 truncate mb-1.5 group-hover:text-indigo-600 transition-colors">{rec.title}</h4>
-                      <div className="flex items-center gap-3 text-xs text-slate-500 font-semibold">
-                        <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-slate-400" /> {rec.duration}</span>
-                        <span>{rec.date}</span>
-                      </div>
-                    </div>
-                    <button className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <button className="w-full mt-6 py-2.5 text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors">
-                Tüm Kayıtları Gör
-              </button>
-            </div>
-
+            )}
           </div>
 
         </div>

@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
-from .models import CourseMaterial, StudentNote, MaterialCategory, InstructorTask
+from .models import CourseMaterial, StudentNote, MaterialCategory, InstructorTask, LiveClass
 from accounts.models import StudentProfile, CustomUser
 
 
@@ -101,7 +101,7 @@ class CourseMaterialListView(APIView):
     def get(self, request):
         user = request.user
 
-        if str(user.user_type).upper() != 'STUDENT':
+        if not user.user_type or str(user.user_type).strip().upper() != 'STUDENT':
             return Response({'error': 'Bu sayfayı sadece öğrenciler görebilir.'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -206,7 +206,7 @@ class InstructorMaterialUploadView(APIView):
 
     def post(self, request):
         user = request.user
-        if str(user.user_type).upper() != 'INSTRUCTOR':
+        if not user.user_type or str(user.user_type).strip().upper() != 'INSTRUCTOR':
             return Response({'error': 'Sadece eğitmenler materyal yükleyebilir.'}, status=403)
 
         try:
@@ -295,7 +295,7 @@ class InstructorArchiveView(APIView):
 
     def get(self, request):
         user = request.user
-        if str(user.user_type).upper() != 'INSTRUCTOR':
+        if not user.user_type or str(user.user_type).strip().upper() != 'INSTRUCTOR':
             return Response({'error': 'Yetkiniz yok.'}, status=status.HTTP_403_FORBIDDEN)
 
         archive = []
@@ -357,7 +357,7 @@ class InstructorStudentListView(APIView):
 
     def get(self, request):
         user = request.user
-        if str(user.user_type).upper() != 'INSTRUCTOR':
+        if not user.user_type or str(user.user_type).strip().upper() != 'INSTRUCTOR':
             return Response({'error': 'Yetkiniz yok.'}, status=status.HTTP_403_FORBIDDEN)
 
         instructor_lang = _get_instructor_language(user)
@@ -376,3 +376,185 @@ class InstructorStudentListView(APIView):
                 'level': sp.level,
             })
         return Response(data, status=status.HTTP_200_OK)
+
+
+# ==============================================================================
+# 6) ÖĞRENCİ EĞİTMEN GÖREVLERİ (GET / PATCH)
+# Tam URL: /api/education/student/tasks/
+# ==============================================================================
+class StudentInstructorTaskView(APIView):
+    """
+    GET  → Öğrenciye atanmış tüm InstructorTask'ları listeler.
+    PATCH → Öğrenci kendi görevinin is_completed durumunu değiştirir.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if not user.user_type or str(user.user_type).strip().upper() != 'STUDENT':
+            return Response({'error': 'Yetkiniz yok.'}, status=status.HTTP_403_FORBIDDEN)
+
+        tasks = InstructorTask.objects.filter(
+            student=user
+        ).select_related('instructor').order_by('-created_at')
+
+        data = []
+        for task in tasks:
+            # Hocanın adı
+            if task.instructor:
+                instructor_name = f"{task.instructor.first_name} {task.instructor.last_name} Hoca"
+            else:
+                instructor_name = "Eğitmen"
+
+            # Başlık: boşsa message'ın ilk 30 karakteri
+            title = task.title
+            if not title:
+                if task.message and len(task.message) > 30:
+                    title = task.message[:30] + '...'
+                elif task.message:
+                    title = task.message
+                else:
+                    title = "İsimsiz Görev"
+
+            # Görev tipi normalize
+            task_type_raw = (task.task_type or 'pdf').strip().lower()
+
+            data.append({
+                'id': task.id,
+                'instructor_name': instructor_name,
+                'title': title,
+                'task_type': task_type_raw,
+                'message': task.message or '',
+                'file_url': request.build_absolute_uri(task.file.url) if task.file else None,
+                'is_completed': task.is_completed,
+                'created_at': task.created_at.strftime("%d %B %Y"),
+            })
+
+        return Response(data, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        user = request.user
+        if not user.user_type or str(user.user_type).strip().upper() != 'STUDENT':
+            return Response({'error': 'Yetkiniz yok.'}, status=status.HTTP_403_FORBIDDEN)
+
+        task_id = request.data.get('task_id')
+        is_completed = request.data.get('is_completed')
+
+        if task_id is None or is_completed is None:
+            return Response(
+                {'error': 'task_id ve is_completed zorunludur.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            task = InstructorTask.objects.get(id=task_id, student=user)
+            task.is_completed = bool(is_completed)
+            task.save()
+            return Response({
+                'message': 'Görev durumu güncellendi.',
+                'is_completed': task.is_completed
+            }, status=status.HTTP_200_OK)
+        except InstructorTask.DoesNotExist:
+            return Response(
+                {'error': 'Görev bulunamadı veya yetkiniz yok.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+
+# ==============================================================================
+# 7) CANLI DERS - EĞİTMEN (GET / POST / PATCH)
+# ==============================================================================
+class InstructorLiveClassView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if not user.user_type or str(user.user_type).strip().upper() != 'INSTRUCTOR':
+            return Response({'error': 'Yetkiniz yok.'}, status=status.HTTP_403_FORBIDDEN)
+
+        active = LiveClass.objects.filter(instructor=user, is_active=True).order_by('-created_at').first()
+        if active:
+            return Response({
+                'id': active.id,
+                'meet_link': active.meet_link,
+                'is_active': True,
+                'created_at': active.created_at.strftime("%d %B %Y - %H:%M"),
+            })
+        return Response({'is_active': False, 'meet_link': None})
+
+    def post(self, request):
+        user = request.user
+        if not user.user_type or str(user.user_type).strip().upper() != 'INSTRUCTOR':
+            return Response({'error': 'Yetkiniz yok.'}, status=status.HTTP_403_FORBIDDEN)
+
+        meet_link = request.data.get('meet_link', '').strip()
+        if not meet_link:
+            return Response({'error': 'meet_link zorunludur.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Önceki aktif linkleri pasif yap
+        LiveClass.objects.filter(instructor=user, is_active=True).update(is_active=False)
+
+        # Yeni aktif link oluştur
+        live = LiveClass.objects.create(instructor=user, meet_link=meet_link, is_active=True)
+        return Response({
+            'message': 'Canlı ders linki başarıyla paylaşıldı.',
+            'id': live.id,
+            'meet_link': live.meet_link,
+            'is_active': True,
+        }, status=status.HTTP_201_CREATED)
+
+    def patch(self, request):
+        user = request.user
+        if not user.user_type or str(user.user_type).strip().upper() != 'INSTRUCTOR':
+            return Response({'error': 'Yetkiniz yok.'}, status=status.HTTP_403_FORBIDDEN)
+
+        count = LiveClass.objects.filter(instructor=user, is_active=True).update(is_active=False)
+        return Response({
+            'message': f'{count} yayin sonlandirildi.',
+            'is_active': False,
+        })
+
+
+# ==============================================================================
+# 8) CANLI DERS - ÖĞRENCİ (GET)
+# ==============================================================================
+class StudentLiveClassView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if not user.user_type or str(user.user_type).strip().upper() != 'STUDENT':
+            return Response({'error': 'Yetkiniz yok.'}, status=status.HTTP_403_FORBIDDEN)
+
+        student_canonical_lang = _get_student_language(user)
+        if not student_canonical_lang:
+            return Response({'is_active': False, 'meet_link': None, 'message': 'Dil bilginiz bulunamadi.'})
+
+        from accounts.models import InstructorProfile
+        from django.db.models import Q
+
+        aliases = LANGUAGE_ALIASES.get(student_canonical_lang, [student_canonical_lang])
+        q = Q()
+        for alias in aliases:
+            q |= Q(department__icontains=alias)
+
+        matching_instructor_ids = InstructorProfile.objects.filter(q).values_list('user_id', flat=True)
+
+        active_live = LiveClass.objects.filter(
+            instructor_id__in=matching_instructor_ids,
+            is_active=True
+        ).select_related('instructor').order_by('-created_at').first()
+
+        if active_live:
+            return Response({
+                'is_active': True,
+                'meet_link': active_live.meet_link,
+                'instructor_name': f"{active_live.instructor.first_name} {active_live.instructor.last_name}",
+                'created_at': active_live.created_at.strftime("%d %B %Y - %H:%M"),
+            })
+
+        return Response({
+            'is_active': False,
+            'meet_link': None,
+            'message': 'Su an aktif bir canli yayin bulunmuyor.'
+        })

@@ -1,9 +1,10 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Users, 
+import {
+  LayoutDashboard,
+  Users,
   FilePlus,
+  Video,
   Megaphone,
   ClipboardCheck
 } from 'lucide-react';
@@ -14,9 +15,9 @@ const InstructorSidebar = () => {
 
   const getNavClass = (path) => {
     const isActive = location.pathname === path || (path === '/egitmen-panel' && location.pathname.startsWith('/egitmen-panel'));
-    
+
     // Yalnızca '/' yolu kontrolü yerine spesifik kontrol ekleyebiliriz ama şimdilik exact match
-    return isActive 
+    return isActive
       ? "w-full flex items-center gap-3 p-4 rounded-xl bg-indigo-900 text-white font-bold transition-all border-l-4 border-indigo-400"
       : "w-full flex items-center gap-3 p-4 rounded-xl text-indigo-200 hover:bg-indigo-900/50 hover:text-white font-medium transition-all group border-l-4 border-transparent";
   };
@@ -33,7 +34,7 @@ const InstructorSidebar = () => {
       <div className="p-8 border-b border-indigo-900/50 flex items-center justify-center">
         <h2 className="text-xl font-black text-white tracking-widest uppercase">Eğitmen Konsolu</h2>
       </div>
-      
+
       <nav className="flex-grow p-6 space-y-2 overflow-y-auto">
         <button onClick={() => navigate('/egitmen-panel')} className={getNavClass('/egitmen-panel')}>
           <LayoutDashboard className={getIconClass('/egitmen-panel')} />
@@ -51,12 +52,16 @@ const InstructorSidebar = () => {
           <FilePlus className={getIconClass('/egitmen-materyal')} />
           Materyal Gönder
         </button>
+        <button onClick={() => navigate('/egitmen-canli')} className={getNavClass('/egitmen-canli')}>
+          <Video className={getIconClass('/egitmen-canli')} />
+          Canlı Yayın
+        </button>
         <button onClick={() => navigate('/egitmen-duyurular')} className={getNavClass('/egitmen-duyurular')}>
           <Megaphone className={getIconClass('/egitmen-duyurular')} />
           Duyurular
         </button>
       </nav>
-      
+
       {/* Kullanıcı Profili (Alt Kısım) */}
       <div className="p-6 border-t border-indigo-900/50 bg-indigo-950/80 mt-auto">
         <div className="flex items-center gap-3">

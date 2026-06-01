@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import MaterialCategory, CourseMaterial, StudentNote, InstructorTask
+from .models import MaterialCategory, CourseMaterial, StudentNote, InstructorTask, LiveClass
 
 @admin.register(MaterialCategory)
 class MaterialCategoryAdmin(admin.ModelAdmin):
@@ -22,3 +22,9 @@ class InstructorTaskAdmin(admin.ModelAdmin):
     list_display = ('instructor', 'student', 'task_type', 'is_completed', 'created_at')
     list_filter = ('is_completed', 'task_type', 'created_at')
     search_fields = ('instructor__username', 'student__username', 'task_type')
+
+@admin.register(LiveClass)
+class LiveClassAdmin(admin.ModelAdmin):
+    list_display = ('instructor', 'meet_link', 'is_active', 'created_at')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('instructor__username', 'instructor__first_name', 'instructor__last_name')

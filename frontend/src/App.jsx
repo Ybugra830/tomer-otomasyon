@@ -23,6 +23,7 @@ import StudentManagement from './pages/admin/StudentManagement';
 import ExamCenter from './pages/admin/ExamCenter';
 import SystemAnnouncements from './pages/admin/SystemAnnouncements';
 import InstructorMaterials from './pages/instructor/InstructorMaterials';
+import InstructorLiveClass from './pages/instructor/InstructorLiveClass';
 import InstructorAnnouncements from './pages/instructor/InstructorAnnouncements';
 import InstructorStudents from './pages/instructor/InstructorStudents';
 import InstructorEvaluation from './pages/instructor/InstructorEvaluation';
@@ -57,6 +58,7 @@ function App() {
               <Route path="/egitmen-degerlendirme" element={<InstructorEvaluation />} />
               <Route path="/egitmen-mesajlar" element={<InstructorMessages />} />
               <Route path="/egitmen-materyal" element={<InstructorMaterials />} />
+              <Route path="/egitmen-canli" element={<InstructorLiveClass />} />
               <Route path="/egitmen-duyurular" element={<InstructorAnnouncements />} />
               <Route path="/profil" element={<StudentProfile />} />
               <Route path="/materyaller" element={<CourseMaterials />} />
