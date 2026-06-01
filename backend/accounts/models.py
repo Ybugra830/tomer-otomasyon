@@ -76,14 +76,15 @@ class StudentProfile(models.Model):
 
 class InstructorProfile(models.Model):
     DEPARTMENT_CHOICES = [
-        ('TOMER', 'TÖMER'),
-        ('ING', 'İngilizce'),
-        ('OTHER', 'Diğer'),
+        ('turkce', 'Türkçe Öğretimi (TÖMER)'),
+        ('ingilizce', 'İngilizce Hazırlık Koordinatörlüğü'),
+        ('almanca', 'Almanca Hazırlık Koordinatörlüğü'),
+        ('diger', 'Diğer')
     ]
 
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='instructor_profile')
     sicil_no = models.CharField(max_length=50, unique=True)
-    department = models.CharField(max_length=20, choices=DEPARTMENT_CHOICES)
+    department = models.CharField(max_length=50, choices=DEPARTMENT_CHOICES)
 
     def __str__(self):
         return f"{self.user.first_name} {self.user.last_name} - Eğitmen Profili".strip()

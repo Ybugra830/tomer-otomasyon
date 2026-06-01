@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import logo from '../assets/DAİRESEL LOGO.png';
 import { ShieldAlert, KeyRound, ArrowRight } from 'lucide-react';
 
@@ -15,7 +16,7 @@ export default function ForcePasswordChange() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (formData.newPassword !== formData.confirmPassword) {
       setError('Şifreler eşleşmiyor. Lütfen tekrar kontrol edin.');
@@ -26,15 +27,27 @@ export default function ForcePasswordChange() {
       return;
     }
 
-    // Başarılı durum
-    setError('');
-    alert('Şifreniz başarıyla güncellendi! Konsola yönlendiriliyorsunuz.');
-    navigate('/egitmen-panel');
+    try {
+      setError('');
+      // Backend'deki `new_password` anahtarına dikkat
+      const response = await axios.post('http://127.0.0.1:8000/api/accounts/instructor/change-password/', {
+        new_password: formData.newPassword
+      }, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('access_token') || localStorage.getItem('access')}`
+        }
+      });
+
+      alert(response.data.message || 'Şifreniz başarıyla güncellendi! Konsola yönlendiriliyorsunuz.');
+      navigate('/egitmen-panel');
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.detail || 'Şifre güncellenirken bir hata oluştu');
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      
+
       {/* Header */}
       <header className="bg-slate-900 py-4 px-6 shadow-md z-20">
         <div className="max-w-7xl mx-auto flex items-center justify-between">

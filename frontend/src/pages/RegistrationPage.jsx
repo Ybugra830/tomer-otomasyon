@@ -17,6 +17,7 @@ export default function RegistrationPage() {
   });
   const [status, setStatus] = useState({ type: '', message: '' });
   const [isLoading, setIsLoading] = useState(false);
+  const [identifyDocument, setIdentifyDocument] = useState(null);
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -27,16 +28,34 @@ export default function RegistrationPage() {
     setIsLoading(true);
     setStatus({ type: '', message: '' });
 
-    const payload = {
-      ...formData,
-      applicationType: 'KURS_ON_KAYIT',
-      educationMode: 'CEVRIM_ICI'
-    };
+    const formDataToSend = new FormData();
+    formDataToSend.append('firstName', formData.firstName);
+    formDataToSend.append('lastName', formData.lastName);
+    formDataToSend.append('identityNo', formData.identityNo);
+    formDataToSend.append('email', formData.email);
+    formDataToSend.append('phone', formData.phone);
+    formDataToSend.append('password', formData.password);
+    formDataToSend.append('language', formData.language);
+    formDataToSend.append('level', formData.level);
+    formDataToSend.append('applicationType', 'KURS_ON_KAYIT');
+    formDataToSend.append('educationMode', 'CEVRIM_ICI');
+
+    if (identifyDocument) {
+      formDataToSend.append('identify_document', identifyDocument);
+    }
 
     try {
       // TomerApi veya global axios kullanmıyoruz ki içeride kalan eski token Registration isteğini engellemesin
       const cleanAxios = axios.create();
-      const response = await cleanAxios.post('http://127.0.0.1:8000/api/accounts/register/student/', payload);
+      const response = await cleanAxios.post(
+        'http://127.0.0.1:8000/api/accounts/register/student/',
+        formDataToSend,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          }
+        }
+      );
 
       if (response.status === 201 || response.status === 200) {
         setStatus({
@@ -188,6 +207,7 @@ export default function RegistrationPage() {
                   >
                     <option value="Türkçe">Türkçe</option>
                     <option value="İngilizce">İngilizce</option>
+                    <option value="almanca">Almanca</option>
                   </select>
                 </div>
               </div>
@@ -208,6 +228,19 @@ export default function RegistrationPage() {
                     <option value="C1">C1</option>
                   </select>
                 </div>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-slate-700">Kimlik / Pasaport Belgesi Yükleyin</label>
+              <div className="mt-1">
+                <input
+                  type="file"
+                  accept=".png,.jpeg,.jpg,.pdf"
+                  required
+                  onChange={(e) => setIdentifyDocument(e.target.files[0])}
+                  className="appearance-none block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
               </div>
             </div>
 

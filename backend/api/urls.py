@@ -19,4 +19,5 @@ urlpatterns = [
     path('admin-dashboard-bekleyenler/', views.get_admin_dashboard_data, name='admin-dashboard-bekleyenler'),
     path('basvuru-detay/<str:tc_no>/', views.get_application_detail, name='basvuru-detay'),
     path('basvuru-incele/<str:user_id>/', views.review_student_application, name='basvuru-incele'),
+    path('instructor-dashboard-summary/', views.InstructorDashboardSummaryView.as_view(), name='instructor-dashboard-summary'),
 ]

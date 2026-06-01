@@ -86,19 +86,47 @@ export default function LoginPage() {
       }
     } else {
       // Akademisyen Girişi
-      e.preventDefault(); // Sayfanın yenilenmesini durdur
+      try {
+        const response = await axios.post('http://127.0.0.1:8000/api/accounts/login/instructor/', {
+          username: formData.username,
+          password: formData.password
+        });
 
-      // HATA AYIKLAMA: Girilen şifreyi tarayıcı konsoluna yazdırıp görelim
-      console.log("ALGILANAN ŞİFRE: ", formData.password);
+        if (response.status === 200) {
+          setStatus('success');
 
-      setStatus('success');
+          if (response.data.access) {
+            localStorage.setItem('access', response.data.access);
+            localStorage.setItem('access_token', response.data.access);
+            // Axios anlık hafıza güncellemesi
+            axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+          }
+          if (response.data.refresh) {
+            localStorage.setItem('refresh', response.data.refresh);
+            localStorage.setItem('refresh_token', response.data.refresh);
+          }
 
-      // Girilen şifrenin sağ/sol boşluklarını sil (trim) ve hepsini küçük harfe çevir (toLowerCase)
-      if (formData.password.trim().toLowerCase() === 'tomer2026') {
-        setTimeout(() => navigate('/sifre-belirle'), 1000);
-      }
-      else {
-        setTimeout(() => navigate('/egitmen-panel'), 1000);
+          dispatch(login(response.data));
+
+          if (response.data.user) {
+            localStorage.setItem('instructorName', `${response.data.user.ad} ${response.data.user.soyad}`);
+            localStorage.setItem('is_active', 'true');
+          }
+
+          // Yönlendirme mantığı: İlk giriş ise şifre belirlemeye yolla
+          if (response.data.is_first_login) {
+            setTimeout(() => navigate('/sifre-belirle'), 1000);
+          } else {
+            setTimeout(() => navigate('/egitmen-panel'), 1000);
+          }
+        } else {
+          setStatus('error');
+          setErrorMessage(response.data?.error || 'Giriş başarısız.');
+        }
+      } catch (error) {
+        setStatus('error');
+        const msg = error.response?.data?.error || error.response?.data?.detail || 'Sunucu ile bağlantı kurulamadı.';
+        setErrorMessage(msg);
       }
     }
   };

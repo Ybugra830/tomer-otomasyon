@@ -422,3 +422,75 @@ def review_student_application(request, user_id):
         return Response({"error": "Öğrenci bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": f"İşlem başarısız: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+
+class InstructorDashboardSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        
+        if user.user_type != 'INSTRUCTOR':
+            return Response({'error': 'Yetkiniz yok.'}, status=status.HTTP_403_FORBIDDEN)
+            
+        try:
+            profile = user.instructor_profile
+            instructor_lang = profile.department.lower()
+        except Exception:
+            instructor_lang = ''
+            
+        # Ön yüzden gelen Form dillerini backend department adlarına eşliyoruz
+        lang_map = {
+            'turkce': 'Türkçe',
+            'ingilizce': 'İngilizce',
+            'almanca': 'almanca', # Yeni eklenen language backend gönderimi 'almanca' 
+        }
+        
+        target_lang = lang_map.get(instructor_lang, instructor_lang)
+        
+        from accounts.models import StudentProfile
+        # 1. Branşa göre KESİN FİLTRELEME
+        my_students_qs = StudentProfile.objects.filter(language=target_lang)
+        
+        # 2. Üst Kartlar Canlı Sayılar
+        active_students_count = my_students_qs.filter(user__is_active=True).count()
+        pending_assignments_count = 0  # Statik ama model hazır
+        unread_messages_count = 0      # Statik ama model hazır
+        
+        stats = {
+            'active_students': active_students_count,
+            'pending_assignments': pending_assignments_count,
+            'unread_messages': unread_messages_count,
+        }
+        
+        # 3. Öğrenci Listesi Verisi
+        student_list = []
+        for st_profile in my_students_qs.select_related('user'):
+            u = st_profile.user
+            student_list.append({
+                'id': u.id,
+                'ad': u.first_name,
+                'soyad': u.last_name,
+                'language': st_profile.language,
+                'level': st_profile.level,
+                'is_active': u.is_active,
+                'durum': 'Aktif' if u.is_active else 'Beklemede'
+            })
+            
+        # Madde 1: Eğitmenin branş display adını döndür
+        branch_display_map = {
+            'turkce': 'Türkçe',
+            'ingilizce': 'İngilizce',
+            'almanca': 'Almanca',
+            'diger': 'Diğer',
+        }
+        instructor_branch = branch_display_map.get(instructor_lang, instructor_lang)
+        
+        return Response({
+            'stats': stats,
+            'student_list': student_list,
+            'instructor_branch': instructor_branch,
+        }, status=status.HTTP_200_OK)

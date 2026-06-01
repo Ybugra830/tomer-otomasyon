@@ -38,6 +38,7 @@ class StudentProfileDetailView(APIView):
             }
 
             if profile:
+                data['language'] = profile.language or ''
                 data['tahminiSeviye'] = profile.level or 'A1'
                 data['basvuruTipi'] = profile.get_application_type_display() if profile.application_type else 'Kurs / Sınav'
                 data['father_name'] = profile.father_name or ''
@@ -149,6 +150,10 @@ class StudentRegisterView(APIView):
             profile.phone = phone
             profile.email_address = email
             profile.is_approved = True  # Otomatik onaylandı
+            
+            if request.FILES.get('identify_document'):
+                profile.identity_document = request.FILES['identify_document']
+                
             profile.save()
         except Exception as e:
             # Profil oluşturulamazsa kullanıcıyı da sil (tutarlılık için)
@@ -217,39 +222,174 @@ class InstructorLoginView(APIView):
         username_input = request.data.get('username')
         password = request.data.get('password')
 
-        # Try to resolve username from email or sicil_no
-        auth_username = username_input
+        user = None
         if username_input:
             if '@' in username_input:
                 try:
-                    user_by_email = CustomUser.objects.get(email=username_input)
-                    auth_username = user_by_email.username
+                    user = CustomUser.objects.get(email=username_input, user_type='INSTRUCTOR')
                 except CustomUser.DoesNotExist:
                     pass
             else:
                 try:
                     profile = InstructorProfile.objects.get(sicil_no=username_input)
-                    auth_username = profile.user.username
+                    user = profile.user
                 except InstructorProfile.DoesNotExist:
-                    pass
+                    try:
+                        user = CustomUser.objects.get(username=username_input, user_type='INSTRUCTOR')
+                    except CustomUser.DoesNotExist:
+                        pass
 
-        user = authenticate(username=auth_username, password=password)
-
-        if user is not None and user.user_type == 'INSTRUCTOR':
-            refresh = RefreshToken.for_user(user)
+        if user and user.user_type == 'INSTRUCTOR':
+            # KRİTİK GEÇİŞ: Eğer ilk girişiyse ve default şifreyi yazdıysa kapıyı aç!
+            if user.is_first_login and password == 'tomer':
+                refresh = RefreshToken.for_user(user)
+                return Response({
+                    'access': str(refresh.access_token),
+                    'refresh': str(refresh),
+                    'is_first_login': True,
+                    'user': {
+                        'ad': user.first_name,
+                        'soyad': user.last_name,
+                        'user_type': user.user_type
+                    }
+                }, status=status.HTTP_200_OK)
+            elif user.check_password(password):
+                refresh = RefreshToken.for_user(user)
+                return Response({
+                    'access': str(refresh.access_token),
+                    'refresh': str(refresh),
+                    'is_first_login': user.is_first_login,
+                    'user': {
+                        'ad': user.first_name,
+                        'soyad': user.last_name,
+                        'user_type': user.user_type
+                    }
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    'detail': "Kimlik bilgileri veya şifre hatalı.",
+                    'error': "Kimlik bilgileri veya şifre hatalı."
+                }, status=status.HTTP_401_UNAUTHORIZED)
+        else:
             return Response({
-                'access': str(refresh.access_token),
-                'refresh': str(refresh),
-                'is_first_login': user.is_first_login,
-                'user': {
-                    'ad': user.first_name,
-                    'soyad': user.last_name,
-                    'user_type': user.user_type
-                }
-            }, status=status.HTTP_200_OK)
-            
-        return Response({
-            'detail': "Kimlik bilgileri veya şifre hatalı.",
-            'error': "Kimlik bilgileri veya şifre hatalı."
-        }, status=status.HTTP_401_UNAUTHORIZED)
+                'detail': "Eğitmen bulunamadı veya kimlik bilgileri hatalı.",
+                'error': "Eğitmen bulunamadı veya kimlik bilgileri hatalı."
+            }, status=status.HTTP_401_UNAUTHORIZED)
 
+
+class InstructorCreateView(APIView):
+    permission_classes = [AllowAny]
+    parser_classes = [JSONParser]
+
+    def post(self, request):
+        data = request.data
+
+        first_name = data.get('first_name', '').strip()
+        last_name = data.get('last_name', '').strip()
+        username = data.get('username', '').strip()  # TC Kimlik No
+        email = data.get('email', '').strip()
+        sicil_no = data.get('sicil_no', '').strip()
+        department = data.get('department', '').strip()
+
+        if not all([first_name, last_name, username, email, sicil_no, department]):
+            return Response({
+                'error': 'Lütfen tüm alanları doldurun.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # 1. CustomUser Oluştur
+            user = CustomUser.objects.create_user(
+                username=username,
+                email=email,
+                password=username,  # Şifre TC Kimlik No
+                first_name=first_name,
+                last_name=last_name,
+                user_type='INSTRUCTOR',
+                is_active=True
+            )
+
+            # 2. InstructorProfile Güncelle / Oluştur
+            # Sinyal zaten InstructorProfile oluşturacak (uuid ile), biz güncelleyeceğiz
+            # veya get_or_create ile ele alacağız
+            profile, created = InstructorProfile.objects.get_or_create(user=user)
+            profile.sicil_no = sicil_no
+            profile.department = department
+            profile.save()
+
+            return Response({
+                'message': f"Eğitmen başarıyla eklendi, varsayılan şifre: {username}"
+            }, status=status.HTTP_201_CREATED)
+
+        except IntegrityError:
+            return Response({
+                'error': 'Bu TC Kimlik No, E-Posta veya Sicil No numarasıyla daha önce kayıt oluşturulmuş.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            # Profil oluşturulamazsa kullanıcıyı sil (tutarlılık için)
+            if 'user' in locals():
+                user.delete()
+            return Response({
+                'error': f'Eğitmen eklenirken hata oluştu: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class InstructorListView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        """
+        Sistemdeki tüm eğitmenleri listeler.
+        
+        MİMARİ KURAL (Student-Instructor Eşleşmesi): 
+        Öğrencileri listelemek veya sınav atamak için ileride yazılacak view'larda,
+        eğer isteği yapan kişi INSTRUCTOR ise şu filtreleme uygulanmalıdır:
+        
+        StudentProfile.objects.filter(language=request.user.instructor_profile.department)
+        
+        Yani departmanı 'ingilizce' olan eğitmen, sadece language='ingilizce' olan öğrencileri görebilir.
+        """
+        instructors = CustomUser.objects.filter(user_type='INSTRUCTOR').select_related('instructor_profile')
+        data = []
+        for instructor in instructors:
+            try:
+                profile = instructor.instructor_profile
+                data.append({
+                    'id': instructor.id,
+                    'first_name': instructor.first_name,
+                    'last_name': instructor.last_name,
+                    'full_name': f"{instructor.first_name} {instructor.last_name}",
+                    'email': instructor.email,
+                    'sicil_no': profile.sicil_no,
+                    'department': profile.department,
+                    'department_display': dict(InstructorProfile.DEPARTMENT_CHOICES).get(profile.department, profile.department),
+                    'is_active': instructor.is_active,
+                })
+            except InstructorProfile.DoesNotExist:
+                continue
+
+        return Response(data, status=status.HTTP_200_OK)
+
+
+class ForcePasswordChangeView(APIView):
+    permission_classes = [IsAuthenticated] # İstek atan hocanın token'ı doğrulanmış olmalı
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        new_password = request.data.get('new_password') or request.data.get('password')
+
+        if not new_password:
+            return Response({'error': 'Yeni şifre alanı boş bırakılamaz.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Şifreyi Django Standartlarına Uygun Hash'le (pbkdf2_sha256)
+        user.set_password(new_password)
+
+        # 2. İlk Giriş Bayrağını Kapat
+        user.is_first_login = False
+
+        # 3. Veritabanına Kesin Kayıt At
+        user.save()
+
+        return Response({
+            'success': True,
+            'message': 'Şifreniz başarıyla kriptolanarak güncellendi. Artık yeni şifrenizle giriş yapabilirsiniz.'
+        }, status=status.HTTP_200_OK)

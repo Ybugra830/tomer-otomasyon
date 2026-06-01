@@ -9,6 +9,7 @@ urlpatterns = [
     path('api/', include('api.urls')), # <--- BU SATIRIN OLDUĞUNDAN EMİN OL
     path('api/accounts/', include('accounts.urls')),
     path('api/exams/', include('exams.urls')),
+    path('api/education/', include('education.urls')),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
 ]
 

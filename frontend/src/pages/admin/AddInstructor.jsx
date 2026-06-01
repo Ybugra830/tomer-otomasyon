@@ -1,16 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { Info, UserPlus, Trash2, Users, PlusCircle } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
 
 const AddInstructor = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('list'); // 'list' or 'add'
-  
-  const [instructors, setInstructors] = useState([
-    { id: 1, name: 'Haluk Bilginer', email: 'haluk@ozal.edu.tr', tc: '12345678901', department: 'İngilizce Hazırlık', status: 'Aktif' },
-    { id: 2, name: 'Gülse Birsel', email: 'gulse@ozal.edu.tr', tc: '98765432100', department: 'Yabancılara Türkçe (TÖMER)', status: 'Pasif' }
-  ]);
+
+  const [instructors, setInstructors] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchInstructors();
+  }, []);
+
+  const fetchInstructors = async () => {
+    try {
+      const response = await axios.get('http://127.0.0.1:8000/api/accounts/instructor/list/');
+      setInstructors(response.data);
+    } catch (error) {
+      console.error("Eğitmenler listelenirken hata oluştu:", error);
+    }
+  };
 
   const [formData, setFormData] = useState({
     ad: '',
@@ -29,31 +41,42 @@ const AddInstructor = () => {
     setInstructors(prev => prev.filter(inst => inst.id !== id));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // API Call goes here
-    alert("Eğitmen başarıyla eklendi!");
-    setActiveTab('list');
-    setFormData({
-      ad: '',
-      soyad: '',
-      tc: '',
-      email: '',
-      sicil: '',
-      brans: ''
-    });
+    setLoading(true);
+    try {
+      const payload = {
+        first_name: formData.ad,
+        last_name: formData.soyad,
+        username: formData.tc, // TC is used as username/password default
+        email: formData.email,
+        sicil_no: formData.sicil,
+        department: formData.brans
+      };
+
+      const response = await axios.post('http://127.0.0.1:8000/api/accounts/instructor/create/', payload);
+      alert(response.data.message || `Eğitmen başarıyla eklendi, varsayılan şifre: ${formData.tc}`);
+
+      setActiveTab('list');
+      setFormData({ ad: '', soyad: '', tc: '', email: '', sicil: '', brans: '' });
+      fetchInstructors(); // Refresh list
+    } catch (error) {
+      alert(error.response?.data?.error || "Eğitmen eklenirken bir hata oluştu.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="w-full flex flex-col md:flex-row min-h-[85vh] rounded-2xl overflow-hidden shadow-2xl border border-slate-200">
-      
+
       {/* Admin Sidebar */}
       <AdminSidebar />
 
       {/* Main Content */}
       <main className="flex-grow bg-slate-50 p-6 md:p-10 overflow-auto">
         <div className="max-w-5xl mx-auto">
-          
+
           <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-2">
             Eğitmen Yönetimi
           </h1>
@@ -61,24 +84,22 @@ const AddInstructor = () => {
 
           {/* Tab Menüsü */}
           <div className="flex gap-2 bg-slate-200/50 p-1 rounded-xl w-max mb-8">
-            <button 
+            <button
               onClick={() => setActiveTab('list')}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
-                activeTab === 'list' 
-                  ? 'bg-white text-blue-700 shadow-sm' 
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'list'
+                  ? 'bg-white text-blue-700 shadow-sm'
                   : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-              }`}
+                }`}
             >
               <Users className="w-4 h-4" />
               Sistemdeki Eğitmenler
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('add')}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
-                activeTab === 'add' 
-                  ? 'bg-blue-600 text-white shadow-sm' 
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'add'
+                  ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-              }`}
+                }`}
             >
               <PlusCircle className="w-4 h-4" />
               Yeni Eğitmen Ekle
@@ -86,7 +107,7 @@ const AddInstructor = () => {
           </div>
 
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            
+
             {activeTab === 'list' ? (
               /* Eğitmen Listesi Tablosu */
               <div className="overflow-x-auto">
@@ -105,28 +126,27 @@ const AddInstructor = () => {
                       instructors.map((instructor) => (
                         <tr key={instructor.id} className="hover:bg-slate-50 transition-colors group">
                           <td className="px-6 py-4">
-                            <div className="font-bold text-slate-800">{instructor.name}</div>
-                            <div className="text-[10px] font-bold text-slate-400 font-mono tracking-wider">{instructor.tc}</div>
+                            <div className="font-bold text-slate-800">{instructor.full_name}</div>
+                            <div className="text-[10px] font-bold text-slate-400 font-mono tracking-wider">{instructor.sicil_no}</div>
                           </td>
                           <td className="px-6 py-4 font-medium text-slate-600 text-sm">
                             {instructor.email}
                           </td>
                           <td className="px-6 py-4">
                             <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-md text-xs font-bold border border-slate-200">
-                              {instructor.department}
+                              {instructor.department_display}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-center">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold inline-block w-max ${
-                              instructor.status === 'Aktif' 
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold inline-block w-max ${instructor.is_active
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                                 : 'bg-slate-100 text-slate-500 border border-slate-200'
-                            }`}>
-                              {instructor.status}
+                              }`}>
+                              {instructor.is_active ? 'Aktif' : 'Pasif'}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <button 
+                            <button
                               onClick={() => handleDelete(instructor.id)}
                               title="Eğitmeni Sil"
                               className="p-2 bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white rounded-lg transition-colors shadow-sm inline-flex"
@@ -150,12 +170,12 @@ const AddInstructor = () => {
               /* Yeni Eğitmen Ekleme Formu */
               <div className="p-8">
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Ad</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         name="ad"
                         value={formData.ad}
                         onChange={handleChange}
@@ -166,8 +186,8 @@ const AddInstructor = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Soyad</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         name="soyad"
                         value={formData.soyad}
                         onChange={handleChange}
@@ -178,8 +198,8 @@ const AddInstructor = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">TC Kimlik No</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         name="tc"
                         value={formData.tc}
                         onChange={handleChange}
@@ -191,8 +211,8 @@ const AddInstructor = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Kurumsal E-Posta</label>
-                      <input 
-                        type="email" 
+                      <input
+                        type="email"
                         name="email"
                         value={formData.email}
                         onChange={handleChange}
@@ -203,8 +223,8 @@ const AddInstructor = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Sicil Numarası</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         name="sicil"
                         value={formData.sicil}
                         onChange={handleChange}
@@ -215,7 +235,7 @@ const AddInstructor = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Branş / Departman</label>
-                      <select 
+                      <select
                         name="brans"
                         value={formData.brans}
                         onChange={handleChange}
@@ -223,10 +243,10 @@ const AddInstructor = () => {
                         className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all bg-slate-50 text-slate-700"
                       >
                         <option value="" disabled>Departman Seçiniz</option>
-                        <option value="TOMER">Yabancılara Türkçe Öğretimi (TÖMER)</option>
-                        <option value="ING">İngilizce Hazırlık Koordinatörlüğü</option>
-                        <option value="ALM">Almanca Hazırlık Koordinatörlüğü</option>
-                        <option value="MODERN">Modern Diller Bölümü</option>
+                        <option value="turkce">Türkçe Öğretimi (TÖMER)</option>
+                        <option value="ingilizce">İngilizce Hazırlık Koordinatörlüğü</option>
+                        <option value="almanca">Almanca Hazırlık Koordinatörlüğü</option>
+                        <option value="diger">Diğer</option>
                       </select>
                     </div>
                   </div>
@@ -235,25 +255,26 @@ const AddInstructor = () => {
                   <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex gap-4 mt-6">
                     <Info className="w-6 h-6 text-blue-600 shrink-0" />
                     <p className="text-sm text-blue-800 font-medium leading-relaxed">
-                      <strong className="font-bold">Güvenlik Politikası:</strong> Sisteme eklenen her eğitmen için varsayılan şifre otomatik olarak <code className="bg-white px-1.5 py-0.5 rounded text-blue-700 font-bold border border-blue-200">Tomer2026</code> atanacaktır. Eğitmen sisteme ilk giriş yaptığında şifresini değiştirmek zorundadır.
+                      <strong className="font-bold">Güvenlik Politikası:</strong> Sisteme eklenen her eğitmen için varsayılan şifre otomatik olarak TC Kimlik Numarası atanacaktır. Eğitmen sisteme ilk giriş yaptığında şifresini değiştirmek zorundadır.
                     </p>
                   </div>
 
                   {/* Submit Button */}
                   <div className="pt-4 flex justify-end">
-                    <button 
+                    <button
                       type="submit"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-8 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+                      disabled={loading}
+                      className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-3.5 px-8 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2"
                     >
                       <UserPlus className="w-5 h-5" />
-                      Eğitmeni Kaydet
+                      {loading ? 'Kaydediliyor...' : 'Eğitmeni Kaydet'}
                     </button>
                   </div>
 
                 </form>
               </div>
             )}
-            
+
           </div>
 
         </div>
