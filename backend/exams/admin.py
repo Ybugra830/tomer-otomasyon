@@ -4,13 +4,13 @@ from .models import Question, LevelExam, StudentExamResult, StudentExamSession, 
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ('level', 'short_text', 'is_reading', 'correct_answer')
-    list_filter = ('level', 'correct_answer', 'is_reading')
+    list_display = ('level', 'language', 'short_text', 'is_reading', 'correct_answer')
+    list_filter = ('language', 'level', 'correct_answer', 'is_reading')
     search_fields = ('text', 'reading_text')
     ordering = ('level', 'id')
     fieldsets = (
         ('Soru Bilgileri', {
-            'fields': ('level', 'text', 'is_reading', 'reading_text')
+            'fields': ('language', 'level', 'text', 'is_reading', 'reading_text')
         }),
         ('Şıklar ve Cevap', {
             'fields': ('option_a', 'option_b', 'option_c', 'option_d', 'correct_answer')
@@ -24,8 +24,8 @@ class QuestionAdmin(admin.ModelAdmin):
 
 @admin.register(LevelExam)
 class LevelExamAdmin(admin.ModelAdmin):
-    list_display = ('title', 'level', 'duration', 'is_adaptive', 'passing_score', 'total_questions')
-    list_filter = ('is_adaptive', 'level')
+    list_display = ('title', 'language', 'level', 'duration', 'passing_score', 'total_questions')
+    list_filter = ('language', 'level')
 
 
 @admin.register(StudentExamSession)

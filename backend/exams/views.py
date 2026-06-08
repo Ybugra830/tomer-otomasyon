@@ -34,6 +34,7 @@ def _get_seviye_by_index(index):
 def _serialize_question(question, request=None):
     data = {
         'id': question.id,
+        'language': question.language,
         'text': question.text,
         'question_type': question.question_type,
         'is_reading': question.is_reading,
@@ -129,12 +130,12 @@ class StartAdaptiveExamView(APIView):
         except Seviye.DoesNotExist:
             starting_level = Seviye.objects.first()
 
-        exam = LevelExam.objects.filter(is_adaptive=True).first()
+        exam = LevelExam.objects.filter(exam_type='PLACEMENT').first()
         if not exam:
             exam = LevelExam.objects.create(
                 title='Adaptive Seviye Tespit Sinavi',
                 duration=60,
-                is_adaptive=True,
+                
                 total_questions=MAX_QUESTIONS,
             )
 
@@ -365,6 +366,7 @@ class AdminQuestionPoolView(APIView):
                 'id': q.id,
                 'level': q.level.id if q.level else None,
                 'level_ad': q.level.ad if q.level else None,
+                'language': q.language,
                 'text': q.text,
                 'question_type': q.question_type,
                 'is_reading': q.is_reading,
@@ -433,6 +435,7 @@ class AdminQuestionPoolView(APIView):
 
             question = Question.objects.create(
                 level=level_obj,
+                language=data.get('language', 'turkce'),
                 text=text,
                 question_type=question_type,
                 is_reading=is_reading,
@@ -476,12 +479,12 @@ class AdminExamListView(APIView):
                 'title': e.title,
                 'exam_type': e.exam_type,
                 'exam_type_display': e.get_exam_type_display(),
+                'language': e.language,
                 'level': e.level.ad if e.level else None,
                 'passing_score': e.passing_score,
                 'total_questions': e.total_questions,
                 'duration': e.duration,
-                'is_adaptive': e.is_adaptive,
-                'is_active': True,
+                'is_published': e.is_published,
             })
         return Response(data)
 
@@ -494,30 +497,27 @@ class AdminExamListView(APIView):
             data = request.data
             level_input = data.get('level')
             exam_type = data.get('exam_type', 'PLACEMENT')
-            is_adaptive = data.get('is_adaptive', False)
-
-            if isinstance(is_adaptive, str):
-                is_adaptive = is_adaptive.lower() in ('true', '1', 'yes')
             
-            if exam_type == 'PLACEMENT':
-                is_adaptive = True
-            else:
-                is_adaptive = False
+
+            if False:
+                pass
+            
+            
 
             level_obj = None
             if level_input and level_input != 'ALL':
                 level_obj = _resolve_level(level_input)
 
             # Manuel secilen soru ID listesi
-            question_ids = data.get('questions', [])
-            if isinstance(question_ids, str):
+            questions_data = request.data.get('question_ids', request.data.get('questions', []))
+            if isinstance(questions_data, str):
                 import json
                 try:
-                    question_ids = json.loads(question_ids)
+                    questions_data = json.loads(questions_data)
                 except (json.JSONDecodeError, ValueError):
-                    question_ids = []
+                    questions_data = []
 
-            total_q = len(question_ids) if question_ids else data.get('random_question_count', 20)
+            total_q = len(questions_data) if questions_data else data.get('random_question_count', 20)
 
             duration_val = data.get('duration')
             duration = int(duration_val) if duration_val else 60
@@ -528,16 +528,17 @@ class AdminExamListView(APIView):
             exam = LevelExam.objects.create(
                 title=data.get('title', 'Isimsiz Sinav'),
                 exam_type=exam_type,
+                language=data.get('language', 'turkce'),
                 level=level_obj,
                 passing_score=passing_score,
                 duration=duration,
                 total_questions=total_q,
-                is_adaptive=is_adaptive,
+                
             )
 
             # M2M soru atamasi (sadece adaptif degilse ve soru ID'leri varsa)
-            if question_ids and not exam.is_adaptive:
-                existing_questions = Question.objects.filter(id__in=question_ids)
+            if questions_data:
+                existing_questions = Question.objects.filter(id__in=questions_data)
                 exam.questions.set(existing_questions)
 
             print("SINAV BASARIYLA OLUSTURULDU - ID:", exam.id, "Soru sayisi:", exam.questions.count())
@@ -558,6 +559,24 @@ class AdminExamListView(APIView):
 
 
 # ==============================================================
+#  5.5) ToggleExamStatusView  -- Sınav Yayın Durumu Değiştirme
+# ==============================================================
+class ToggleExamStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, exam_id):
+        exam = get_object_or_404(LevelExam, id=exam_id)
+        exam.is_published = not exam.is_published
+        exam.save(update_fields=['is_published'])
+        return Response({
+            'status': 'success',
+            'exam_id': exam.id,
+            'is_published': exam.is_published,
+            'message': f"Sınav {'yayına alındı' if exam.is_published else 'taslağa çekildi'}."
+        })
+
+
+# ==============================================================
 #  6) AdminExamDetailView  -- Sinav Icerik Goruntuleme
 # ==============================================================
 class AdminExamDetailView(APIView):
@@ -571,17 +590,18 @@ class AdminExamDetailView(APIView):
             'title': exam.title,
             'exam_type': exam.exam_type,
             'exam_type_display': exam.get_exam_type_display(),
-            'is_adaptive': exam.is_adaptive,
+            'language': exam.language,
+            
             'duration': exam.duration,
             'passing_score': exam.passing_score,
             'total_questions': exam.total_questions,
             'level': exam.level.ad if exam.level else None,
         }
 
-        if exam.is_adaptive:
+        if False:
             return Response({
                 'exam': exam_info,
-                'is_adaptive': True,
+                
                 'message': 'Bu sinav dinamik (adaptive) oldugu icin sabit bir soru listesi yoktur. Sorular havuzdan ogrenciye ozel cekilir.',
                 'questions': [],
             })
@@ -590,6 +610,7 @@ class AdminExamDetailView(APIView):
         for q in exam.questions.select_related('level').order_by('id'):
             questions_data.append({
                 'id': q.id,
+                'language': q.language,
                 'text': q.text,
                 'question_type': q.question_type,
                 'level_ad': q.level.ad if q.level else None,
@@ -605,7 +626,7 @@ class AdminExamDetailView(APIView):
 
         return Response({
             'exam': exam_info,
-            'is_adaptive': False,
+            
             'message': None,
             'questions': questions_data,
         })
@@ -649,7 +670,7 @@ class AdminAssignExamView(APIView):
         else:
             # Otomatik: en guncel aktif Seviye Tespit Sinavini bul
             exam = LevelExam.objects.filter(
-                exam_type='PLACEMENT', is_adaptive=True
+                exam_type='PLACEMENT'
             ).order_by('-id').first()
 
             if not exam:
@@ -699,9 +720,190 @@ class StudentPendingExamsView(APIView):
                 'exam_type': a.exam.exam_type,
                 'title': a.exam.title,
                 'duration': a.exam.duration,
-                'is_adaptive': a.exam.is_adaptive,
+                
                 'status': a.status,
                 'assigned_at': a.assigned_at.isoformat(),
             })
 
         return Response(data)
+
+
+# ==============================================================
+#  9) StudentAvailableExamsView  -- Öğrencinin Dili + Seviyesiyle Eşleşen Sınavlar
+# ==============================================================
+class StudentAvailableExamsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if not user.user_type or str(user.user_type).strip().upper() != 'STUDENT':
+            return Response({'error': 'Yetkiniz yok.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # OVERRIDE: Tüm katı dil/seviye filtreleri iptal edildi
+        # Direkt olarak veritabanındaki yayında olan tüm sınavları getir (is_published=True)
+        exams = LevelExam.objects.filter(is_published=True).order_by('-id')
+
+        data = []
+        for e in exams:
+            data.append({
+                'id': e.id,
+                'title': e.title,
+                'exam_type': e.exam_type,
+                'exam_type_display': e.get_exam_type_display(),
+                'duration': e.duration,
+                'total_questions': e.total_questions,
+                'level': e.level.ad if e.level else None,
+                'passing_score': e.passing_score,
+            })
+
+        return Response(data, status=status.HTTP_200_OK)
+
+
+# ==============================================================
+#  10) GetStaticExamQuestionsView  -- Statik Sınav Soruları
+# ==============================================================
+class GetStaticExamQuestionsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, exam_id):
+        exam = get_object_or_404(LevelExam, id=exam_id)
+
+        # Doğrudan hocanın/adminin atadığı statik sorular çekiliyor.
+        # Hiçbir is_adaptive veya seviye tespit kuralı yok!
+        questions_qs = exam.questions.select_related('level').order_by('id')
+
+        questions_data = []
+        for q in questions_qs:
+            item = {
+                'id': q.id,
+                'text': q.text,
+                'question_type': q.question_type,
+                'is_reading': q.is_reading,
+                'option_a': q.option_a,
+                'option_b': q.option_b,
+                'option_c': q.option_c,
+                'option_d': q.option_d,
+                # correct_answer GÖNDERİLMİYOR.
+            }
+            if q.is_reading and q.reading_text:
+                item['reading_text'] = q.reading_text
+            if q.audio_file:
+                item['audio_file'] = request.build_absolute_uri(q.audio_file.url)
+            questions_data.append(item)
+
+        return Response({
+            'exam': {
+                'id': exam.id,
+                'title': exam.title,
+                'duration': exam.duration,
+                'total_questions': exam.total_questions,
+                'exam_type': exam.exam_type,
+            },
+            'questions': questions_data,
+        })
+
+
+# ==============================================================
+#  11) SubmitStaticExamView  -- Öğrenci Statik Sınav Gönderimi + Akıllı Seviye Atlama
+# ==============================================================
+class SubmitStaticExamView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        exam_id = request.data.get('exam_id')
+        # answers formati hem Liste hem Sozluk(dict) desteklesin
+        answers_data = request.data.get('answers', [])
+        if isinstance(answers_data, dict):
+            answers_list = [{'question_id': k, 'selected_option': v} for k, v in answers_data.items()]
+        else:
+            answers_list = answers_data
+
+        if not exam_id:
+            return Response({'error': 'exam_id zorunludur.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        exam = get_object_or_404(LevelExam, id=exam_id)
+        questions_qs = exam.questions.all()
+
+        correct_count = 0
+        wrong_count = 0
+        from .models import StudentWritingSubmission
+
+        for ans in answers_list:
+            q_id_str = str(ans.get('question_id'))
+            selected = ans.get('selected_option', '')
+
+            q_obj = [q for q in questions_qs if str(q.id) == q_id_str]
+            if not q_obj:
+                continue
+            question = q_obj[0]
+
+            # ── 1. KONTROL: WRITING İSE PUANLAMADAN MUAF TUT & KAYDET ──
+            if question.question_type == 'WRITING' or not any([question.option_a, question.option_b, question.option_c, question.option_d]):
+                StudentWritingSubmission.objects.create(
+                    exam=exam,
+                    student=user,
+                    question=question,
+                    user_text=selected
+                )
+                continue
+
+            # ── 2. NORMAL TEST PUANLAMASI ──
+            real_answer = question.correct_answer
+            if real_answer is None:
+                continue
+            if str(selected).upper().strip() == str(real_answer).upper().strip():
+                correct_count += 1
+            else:
+                wrong_count += 1
+
+        total = correct_count + wrong_count
+        score_percent = round((correct_count / total) * 100, 1) if total > 0 else 0
+
+        from .models import StudentExamResult, StudentExamAssignment
+        StudentExamResult.objects.create(
+            user=user,
+            exam=exam,
+            score=score_percent,
+            is_passed=(score_percent >= exam.passing_score),
+        )
+
+        StudentExamAssignment.objects.filter(
+            student=user, exam=exam,
+        ).exclude(status='TAMAMLANDI').update(status='TAMAMLANDI')
+
+        # ── AKILLI SEVİYE ATLATMA: Sadece PLACEMENT (Seviye Tespit) sınavları için ──
+        new_level = None
+        if exam.exam_type == 'PLACEMENT':
+            if score_percent <= 30:
+                new_level = 'A1'
+            elif score_percent <= 50:
+                new_level = 'A2'
+            elif score_percent <= 75:
+                new_level = 'B1'
+            else:
+                new_level = 'B2'
+
+            # Öğrenci profilindeki seviyeyi güncelle
+            try:
+                profile = user.student_profile
+                profile.level = new_level
+                profile.save(update_fields=['level'])
+                print(f"[PLACEMENT] Öğrenci {user.username} seviyesi {new_level} olarak güncellendi (skor: {score_percent}%)")
+            except Exception as e:
+                print(f"[PLACEMENT] Seviye güncellenirken hata: {e}")
+
+        response_data = {
+            'status': 'success',
+            'score': score_percent,
+            'correct': correct_count,
+            'wrong': wrong_count,
+            'total': total,
+            'is_passed': score_percent >= exam.passing_score,
+            'passing_score': exam.passing_score,
+        }
+
+        if new_level:
+            response_data['new_level'] = new_level
+
+        return Response(response_data)

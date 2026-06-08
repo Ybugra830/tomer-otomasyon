@@ -400,11 +400,13 @@ class StudentInstructorTaskView(APIView):
 
         data = []
         for task in tasks:
-            # Hocanın adı
+            # Hocanın adı ve maili
             if task.instructor:
                 instructor_name = f"{task.instructor.first_name} {task.instructor.last_name} Hoca"
+                instructor_email = task.instructor.email
             else:
                 instructor_name = "Eğitmen"
+                instructor_email = None
 
             # Başlık: boşsa message'ın ilk 30 karakteri
             title = task.title
@@ -422,6 +424,7 @@ class StudentInstructorTaskView(APIView):
             data.append({
                 'id': task.id,
                 'instructor_name': instructor_name,
+                'instructor_email': instructor_email,
                 'title': title,
                 'task_type': task_type_raw,
                 'message': task.message or '',

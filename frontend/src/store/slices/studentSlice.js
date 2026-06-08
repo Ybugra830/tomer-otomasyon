@@ -2,7 +2,7 @@ import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   kisiselBilgiler: {
-    adSoyad: 'Bugra Erbay',
+    adSoyad: '',
     tcNo: '12345678901',
     kayitTarihi: '06.05.2026',
     basvuruTipi: 'Kurs Ön Kayıt',

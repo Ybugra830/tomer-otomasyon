@@ -20,7 +20,13 @@ class LevelExam(models.Model):
         verbose_name='Sinav Turu',
     )
     duration = models.IntegerField(default=60, verbose_name='Sure (dakika)')
-    is_adaptive = models.BooleanField(default=True, verbose_name='Adaptive mi?')
+    # is_adaptive silindi (statik yapiya zorunlu gecis)
+    language = models.CharField(
+        max_length=50,
+        choices=[('turkce', 'Türkçe'), ('ingilizce', 'İngilizce'), ('almanca', 'Almanca')],
+        default='turkce',
+        verbose_name='Dil'
+    )
 
     # Eski alanlar korunuyor (geriye uyumluluk)
     level = models.ForeignKey(
@@ -32,6 +38,7 @@ class LevelExam(models.Model):
         null=True,
     )
     passing_score = models.IntegerField(default=70, verbose_name='Gecme Baraji (%)')
+    is_published = models.BooleanField(default=False, verbose_name='Yayında mı?')
     total_questions = models.IntegerField(default=20, verbose_name='Toplam Soru Sayisi')
 
     # Statik sinavlar icin M2M soru iliskisi
@@ -79,6 +86,12 @@ class Question(models.Model):
         choices=QUESTION_TYPE_CHOICES,
         default='GRAMMAR',
         verbose_name='Soru Tipi',
+    )
+    language = models.CharField(
+        max_length=50,
+        choices=[('turkce', 'Türkçe'), ('ingilizce', 'İngilizce'), ('almanca', 'Almanca')],
+        default='turkce',
+        verbose_name='Dil'
     )
 
     # Reading parcasi destegi
@@ -245,3 +258,20 @@ class StudentExamAssignment(models.Model):
 
     def __str__(self):
         return f"{self.student} → {self.exam.title} ({self.get_status_display()})"
+
+
+class StudentWritingSubmission(models.Model):
+    """Yazma Sinavi Icin Metin Kayitlari"""
+    exam = models.ForeignKey(LevelExam, on_delete=models.CASCADE, related_name='writing_submissions')
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='writing_submissions')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='writing_submissions')
+    user_text = models.TextField(verbose_name='Öğrenci Metni')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    score = models.IntegerField(null=True, blank=True, verbose_name='Eğitmen Puanı')
+
+    class Meta:
+        verbose_name = 'Yazma Sınavı Gönderimi'
+        verbose_name_plural = 'Yazma Sınav Gönderimleri'
+
+    def __str__(self):
+        return f"{self.student} - Question {self.question.id} Writing"

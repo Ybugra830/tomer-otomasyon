@@ -140,8 +140,8 @@ const InstructorTasks = () => {
                                     <div
                                         key={task.id}
                                         className={`relative flex flex-col md:flex-row items-start md:items-center justify-between p-6 rounded-2xl border transition-all duration-300 ${done
-                                                ? 'bg-slate-50 border-slate-200 opacity-80'
-                                                : `${theme.cardBg} shadow-sm hover:shadow-md`
+                                            ? 'bg-slate-50 border-slate-200 opacity-80'
+                                            : `${theme.cardBg} shadow-sm hover:shadow-md`
                                             }`}
                                     >
                                         {/* Sol: Bilgiler */}
@@ -154,6 +154,11 @@ const InstructorTasks = () => {
                                                     <span className={`text-sm font-bold ${done ? 'text-slate-500' : 'text-slate-800'}`}>
                                                         {task.instructor_name}
                                                     </span>
+                                                    {task.instructor_email && (
+                                                        <span className="text-[11px] font-medium text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md select-all cursor-text" title="Kopyalamak için tıklayın">
+                                                            {task.instructor_email}
+                                                        </span>
+                                                    )}
                                                     <span className={`text-[11px] font-bold uppercase px-2.5 py-0.5 rounded-md tracking-wide ${done ? 'bg-slate-100 text-slate-500' : theme.badgeBg}`}>
                                                         {task.task_type}
                                                     </span>
@@ -181,8 +186,8 @@ const InstructorTasks = () => {
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className={`w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm ${done
-                                                            ? 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                                                            : `${theme.btnBg} text-white hover:shadow-md`
+                                                        ? 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                                                        : `${theme.btnBg} text-white hover:shadow-md`
                                                         }`}
                                                 >
                                                     {theme.actionIcon}
@@ -196,8 +201,8 @@ const InstructorTasks = () => {
                                             <button
                                                 onClick={() => toggleTaskCompletion(task.id, task.is_completed)}
                                                 className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-bold transition-all duration-300 ${done
-                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                                                     }`}
                                             >
                                                 {done

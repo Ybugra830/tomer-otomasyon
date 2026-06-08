@@ -9,10 +9,10 @@ import {
   User,
   Bell,
   Video,
-  MessageSquare,
   FileBadge,
   Target
 } from 'lucide-react';
+import axios from 'axios';
 
 const StudentSidebar = () => {
   const navigate = useNavigate();
@@ -36,6 +36,35 @@ const StudentSidebar = () => {
       ? "w-5 h-5"
       : "w-5 h-5 text-slate-400 group-hover:text-indigo-500";
   };
+
+  const [hasNewAnnouncement, setHasNewAnnouncement] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isActiveUser) return;
+    const fetchUnread = async () => {
+      try {
+        const token = localStorage.getItem('access_token') || localStorage.getItem('access');
+        if (!token) return;
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        const res = await axios.get('http://127.0.0.1:8000/api/communications/student/announcements/unread/', config);
+
+        const latestId = res.data.latest_id;
+        const lastRead = parseInt(localStorage.getItem('last_read_announcement_id') || '0', 10);
+
+        if (latestId > lastRead) {
+          setHasNewAnnouncement(true);
+        } else {
+          setHasNewAnnouncement(false);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000); // 30 sn
+    return () => clearInterval(interval);
+  }, [isActiveUser, location.pathname]);
 
   return (
     <aside className="w-full md:w-72 bg-white shadow-lg flex flex-col border-r border-slate-100 relative z-10 shrink-0">
@@ -80,13 +109,14 @@ const StudentSidebar = () => {
                 1 Yeni
               </span>
             </button>
-            <button onClick={() => navigate('/duyurular')} className={getNavClass('/duyurular')}>
-              <Bell className={getIconClass('/duyurular')} />
-              Duyurular
-            </button>
-            <button onClick={() => navigate('/mesajlar')} className={getNavClass('/mesajlar')}>
-              <MessageSquare className={getIconClass('/mesajlar')} />
-              Hocaya Sor / Mesajlar
+            <button onClick={() => navigate('/duyurular')} className={`${getNavClass('/duyurular')} justify-between`}>
+              <div className="flex items-center gap-3">
+                <Bell className={getIconClass('/duyurular')} />
+                Duyurular
+              </div>
+              {hasNewAnnouncement && (
+                <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-sm shadow-red-300"></span>
+              )}
             </button>
             <button onClick={() => navigate('/sertifikalar')} className={getNavClass('/sertifikalar')}>
               <FileBadge className={getIconClass('/sertifikalar')} />

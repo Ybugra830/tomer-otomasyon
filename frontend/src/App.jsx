@@ -12,7 +12,6 @@ import StudentProfile from './pages/StudentProfile';
 import CourseMaterials from './pages/CourseMaterials';
 import ActiveExams from './pages/ActiveExams';
 import ExamResults from './pages/ExamResults';
-import Messages from './pages/Messages';
 import Certificates from './pages/Certificates';
 import LiveClasses from './pages/LiveClasses';
 import InstructorDashboard from './pages/instructor/InstructorDashboard';
@@ -30,6 +29,7 @@ import InstructorEvaluation from './pages/instructor/InstructorEvaluation';
 import StudentAnnouncements from './pages/student/StudentAnnouncements';
 import ForcePasswordChange from './pages/ForcePasswordChange';
 import AdaptiveExam from './pages/AdaptiveExam';
+import ExamPlayer from './pages/student/ExamPlayer';
 
 function App() {
   return (
@@ -66,10 +66,10 @@ function App() {
               <Route path="/aktif-sinavlarim" element={<ActiveExams />} />
               <Route path="/sinav-sonuclari" element={<ExamResults />} />
               <Route path="/egitmen-gorevleri" element={<InstructorTasks />} />
-              <Route path="/mesajlar" element={<Messages />} />
               <Route path="/duyurular" element={<StudentAnnouncements />} />
               <Route path="/sertifikalar" element={<Certificates />} />
               <Route path="/sinav/seviye-tespit" element={<AdaptiveExam />} />
+              <Route path="/sinav-coz/:id" element={<ExamPlayer />} />
             </Routes>
           </main>
 

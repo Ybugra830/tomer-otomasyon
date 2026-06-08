@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { 
-  BookOpen, 
-  Headphones, 
-  PenTool, 
-  FileText, 
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
+import {
+  BookOpen,
+  Headphones,
+  PenTool,
+  FileText,
   Clock,
   HelpCircle,
   Lock
@@ -12,11 +15,45 @@ import {
 import StudentSidebar from '../components/StudentSidebar';
 
 const StudentDashboard = () => {
+  const { user } = useAuth();
   const ogrenciDurumu = useSelector((state) => state.student.ogrenciDurumu);
   const kisiselBilgiler = useSelector((state) => state.student.kisiselBilgiler);
-  
+
   const sinavDurumlari = ogrenciDurumu.sinavDurumlari;
-  const studentName = kisiselBilgiler?.adSoyad || 'Öğrenci';
+
+  const navigate = useNavigate();
+  const [availableExams, setAvailableExams] = useState([]);
+
+  useEffect(() => {
+    const fetchExams = async () => {
+      try {
+        const token = localStorage.getItem('access_token') || localStorage.getItem('access');
+        const r = await axios.get('http://127.0.0.1:8000/api/exams/student/available-exams/', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setAvailableExams(r.data);
+      } catch (error) {
+        console.error('Sınav verileri alınamadı:', error);
+      }
+    };
+    fetchExams();
+  }, []);
+
+  const placementExam = availableExams.find(e =>
+    e.exam_type?.toUpperCase() === 'PLACEMENT' ||
+    e.title?.toLowerCase().includes('seviye')
+  ) || availableExams[0];
+
+  // DİNAMİK İSİM: Önce AuthContext, sonra Redux, en son fallback
+  const authUser = user?.user || user;
+  const studentName = (() => {
+    if (authUser?.first_name && authUser?.last_name) return `${authUser.first_name} ${authUser.last_name}`;
+    if (authUser?.ad && authUser?.soyad) return `${authUser.ad} ${authUser.soyad}`;
+    if (authUser?.first_name) return authUser.first_name;
+    if (authUser?.username) return authUser.username;
+    if (kisiselBilgiler?.adSoyad) return kisiselBilgiler.adSoyad;
+    return localStorage.getItem('studentName') || 'Öğrenci';
+  })();
 
   // Duruma göre renkli rozetleri (badge) render eden yardımcı fonksiyon
   const renderBadge = (durum) => {
@@ -37,8 +74,8 @@ const StudentDashboard = () => {
       id: 'seviyeTespit',
       title: 'Seviye Tespit Sınavı',
       desc: 'Çoktan seçmeli sorulardan oluşan seviye tespit sınavı. Bu modül diğer beceri sınavlarından önce tamamlanmalıdır.',
-      time: '60 Dakika',
-      questions: '50 Soru',
+      time: placementExam ? `${placementExam.duration} Dakika` : '-- Dakika',
+      questions: placementExam ? `${placementExam.total_questions} Soru` : '-- Soru',
       icon: <FileText className="w-7 h-7" />,
       colorClass: 'bg-blue-100 text-blue-600',
       btnClass: 'bg-blue-600 hover:bg-blue-700'
@@ -87,21 +124,21 @@ const StudentDashboard = () => {
 
   return (
     <div className="w-full min-h-[85vh] flex flex-col md:flex-row rounded-2xl overflow-hidden shadow-2xl border border-slate-200">
-      
+
       {/* Extract Edilmiş Sidebar */}
       <StudentSidebar />
 
       {/* Main Content */}
       <main className="flex-grow bg-slate-50 p-6 md:p-10 overflow-auto">
         <div className="max-w-5xl mx-auto">
-          
+
           {/* Top Banner & Stats */}
           <div className="bg-white rounded-2xl p-8 mb-10 shadow-sm border border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="md:col-span-2 flex flex-col justify-center">
               <h1 className="text-3xl font-bold text-slate-800 mb-2">Hoş geldin, <span className="text-indigo-600">{studentName}</span> 👋</h1>
               <p className="text-slate-500">Aktif sınav modüllerine aşağıdan ulaşabilir ve sınavlarını başlatabilirsin. Başarılar dileriz!</p>
             </div>
-            
+
             <div className="bg-slate-50 rounded-xl p-5 border border-slate-100 flex flex-col justify-center">
               <div className="flex justify-between items-end mb-2">
                 <span className="text-sm font-semibold text-slate-600">Genel İlerleme</span>
@@ -124,15 +161,15 @@ const StudentDashboard = () => {
               const isLocked = durum === 'kilitli';
 
               return (
-                <div 
-                  key={exam.id} 
+                <div
+                  key={exam.id}
                   className={`bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col h-full transition-all relative ${isLocked ? 'opacity-70 bg-slate-50/50' : 'hover:shadow-md'}`}
                 >
                   {/* Status Badge */}
                   <div className="absolute top-6 right-6">
                     {renderBadge(durum)}
                   </div>
-                  
+
                   <div className="flex items-center gap-4 mb-4 pr-24">
                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${isLocked ? 'bg-slate-200 text-slate-400' : exam.colorClass}`}>
                       {exam.icon}
@@ -141,9 +178,9 @@ const StudentDashboard = () => {
                       <h3 className="text-xl font-bold text-slate-800">{exam.title}</h3>
                     </div>
                   </div>
-                  
+
                   <p className="text-slate-600 text-sm mb-4 flex-grow">{exam.desc}</p>
-                  
+
                   {/* Exam Details (Time & Questions) */}
                   <div className="flex items-center gap-5 text-sm text-slate-500 mb-6 font-medium">
                     <div className="flex items-center gap-1.5">
@@ -163,7 +200,15 @@ const StudentDashboard = () => {
                       Önce Seviye Tespit Sınavını Tamamlayın
                     </div>
                   ) : (
-                    <button className={`w-full py-3 text-white font-semibold rounded-xl shadow-sm transition-colors text-sm ${exam.btnClass}`}>
+                    <button
+                      disabled={exam.id === 'seviyeTespit' && !placementExam?.id}
+                      onClick={() => {
+                        if (exam.id === 'seviyeTespit' && placementExam?.id) {
+                          navigate('/sinav-coz/' + placementExam.id);
+                        }
+                      }}
+                      className={`w-full py-3 text-white font-semibold rounded-xl shadow-sm transition-colors text-sm ${exam.btnClass} disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
                       Sınava Başla
                     </button>
                   )}

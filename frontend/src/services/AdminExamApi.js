@@ -80,6 +80,11 @@ export const getMyPendingExams = async () => {
   return response.data;
 };
 
+export const toggleExamStatus = async (examId) => {
+  const response = await api.post(`exams/admin/toggle-status/${examId}/`);
+  return response.data;
+};
+
 export default {
   getAdminExams,
   createAdminExam,
@@ -88,4 +93,5 @@ export default {
   getExamDetail,
   assignExam,
   getMyPendingExams,
+  toggleExamStatus,
 };
