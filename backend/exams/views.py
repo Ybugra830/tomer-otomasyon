@@ -891,51 +891,38 @@ class StudentAssignedExamsView(APIView):
 
     def get(self, request):
         try:
-            # AŞAMA 1: İZOLASYON (Sadece giriş yapan öğrencinin yetkili olduğu sınavlar)
-            # student alanı doğrudan request.user ile eşleşmelidir.
             assignments = StudentExamAssignment.objects.select_related('exam').filter(
                 student=request.user,
-                status__in=['BEKLIYOR', 'BASLATILDI']
-            )
+                status__in=['BEKLIYOR', 'BASLATILDI'],
+            ).order_by('-assigned_at')
 
             data = []
-            
-            # AŞAMA 2: DİNAMİK ENJEKSİYON (Kabuğu delip asıl sınav verilerini çekme)
-            for assign in assignments:
-                exam = assign.exam
-                
-                # AŞAMA 3 (Kısmi Zırh): Eğer sınav veritabanından silinmişse veya kopuksa atla
-                if not exam:
-                    continue
-                    
-                # Sınav başlığını dinamik olarak güvenli bir şekilde al
-                title = getattr(exam, 'title', getattr(exam, 'exam_title', getattr(exam, 'name', 'İsimsiz Sınav')))
-                
-                # Sınav tipini kontrol et (Frontend 'PLACEMENT' bekliyor olabilir)
-                exam_type = getattr(exam, 'exam_type', 'PLACEMENT')
-                if 'seviye' in str(exam_type).lower() or 'placement' in str(exam_type).lower():
-                    exam_type = 'PLACEMENT'
 
-                # Frontend'in beklediği JSON şemasını gerçek verilerle doldur
+            for assign in assignments:
+                try:
+                    exam = assign.exam
+                except LevelExam.DoesNotExist:
+                    continue
+
+                if exam is None:
+                    continue
+
                 data.append({
-                    'id': assign.id, # Frontend'in cevapları gönderirken (submit) kullanacağı ATAMA ID'si
+                    'id': assign.id,
+                    'assignment_id': assign.id,
                     'status': assign.status,
                     'exam': {
-                        'id': exam.id, # Soruları çekerken kullanılacak ASIL SINAV ID'si
-                        'title': title,
-                        'exam_type': exam_type,
-                        'duration': getattr(exam, 'duration', 0), # Gerçek süre (yoksa 0)
-                        'total_questions': getattr(exam, 'total_questions', 0) # Gerçek soru sayısı (yoksa 0)
-                    }
+                        'id': exam.id,
+                        'title': exam.title,
+                        'duration': exam.duration,
+                        'total_questions': exam.total_questions,
+                        'exam_type': exam.exam_type,
+                    },
                 })
 
-            print(f"DEBUG: {request.user.username} için {len(data)} adet dinamik sınav başarıyla çekildi.")
             return Response(data, status=200)
 
-        except Exception as e:
-            # AŞAMA 3: ÇÖKME ZIRHI (Failsafe)
-            # Herhangi bir ORM veya ilişki hatasında frontend'i 500 hatasıyla patlatmak yerine,
-            # sessizce hatayı logla ve boş liste dön.
+        except Exception:
             import traceback
             traceback.print_exc()
             return Response([], status=200)
