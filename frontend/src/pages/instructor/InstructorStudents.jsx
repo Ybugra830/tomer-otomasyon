@@ -1,15 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import InstructorSidebar from './InstructorSidebar';
-import { 
-  Users, BarChart2, Paperclip, X, CheckCircle, UploadCloud 
+import axios from 'axios';
+import {
+  Users, BarChart2, Paperclip, X, CheckCircle, UploadCloud, CheckSquare
 } from 'lucide-react';
-
-const mockStudents = [
-  { id: 1, name: 'Yaşar Buğra Erbay', level: 'B1', stats: { gramer: 85, okuma: 70, dinleme: 40, yazma: 60 } },
-  { id: 2, name: 'Ahmet Yılmaz', level: 'A2', stats: { gramer: 45, okuma: 55, dinleme: 80, yazma: 50 } },
-  { id: 3, name: 'Ayşe Kaya', level: 'C1', stats: { gramer: 95, okuma: 90, dinleme: 88, yazma: 92 } },
-  { id: 4, name: 'Mehmet Demir', level: 'B2', stats: { gramer: 65, okuma: 80, dinleme: 35, yazma: 75 } }
-];
 
 const ProgressBar = ({ label, value }) => {
   let colorClass = 'bg-blue-500';
@@ -32,6 +26,45 @@ const ProgressBar = ({ label, value }) => {
 const InstructorStudents = () => {
   const [selectedStudentForStats, setSelectedStudentForStats] = useState(null);
   const [selectedStudentForTask, setSelectedStudentForTask] = useState(null);
+  const [selectedStudentForExamAssign, setSelectedStudentForExamAssign] = useState(null);
+
+  const [availableExams, setAvailableExams] = useState([]);
+  const [selectedExamIds, setSelectedExamIds] = useState([]);
+  const [students, setStudents] = useState([]);
+
+  useEffect(() => {
+    // Sadece yetkili olunan sınavları listele
+    const fetchExams = async () => {
+      try {
+        const token = localStorage.getItem('access_token') || localStorage.getItem('access');
+        const res = await axios.get('http://127.0.0.1:8000/api/exams/admin/list/', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setAvailableExams(res.data);
+      } catch (err) {
+        console.error("Sınavlar yüklenirken hata:", err);
+      }
+    };
+
+    const fetchStudents = async () => {
+      try {
+        const token = localStorage.getItem('access_token') || localStorage.getItem('access');
+        const response = await axios.get('http://127.0.0.1:8000/api/instructor-dashboard-summary/', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        if (response.status === 200) {
+          setStudents(response.data.student_list);
+        }
+      } catch (error) {
+        console.error("Öğrenciler çekilirken hata oluştu:", error);
+      }
+    };
+
+    fetchExams();
+    fetchStudents();
+  }, []);
 
   const handleAssignTask = (e) => {
     e.preventDefault();
@@ -39,12 +72,35 @@ const InstructorStudents = () => {
     setSelectedStudentForTask(null);
   };
 
+  const handleAssignExamsSubmit = async (e) => {
+    e.preventDefault();
+    if (selectedExamIds.length === 0) {
+      alert("Lütfen en az bir sınav seçin.");
+      return;
+    }
+    try {
+      const token = localStorage.getItem('access_token') || localStorage.getItem('access');
+      await axios.post('http://127.0.0.1:8000/api/exams/instructor/assign-exams/', {
+        student_id: selectedStudentForExamAssign.id,
+        exam_ids: selectedExamIds
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert("Sınavlar başarıyla atandı!");
+      setSelectedStudentForExamAssign(null);
+      setSelectedExamIds([]);
+    } catch (err) {
+      console.error(err);
+      alert("Atama yapılırken hata oluştu: " + (err.response?.data?.error || "Bilinmeyen Hata"));
+    }
+  };
+
   return (
     <div className="flex min-h-[85vh] bg-slate-50 w-full relative z-10">
       <InstructorSidebar />
       <main className="flex-1 p-8 lg:p-12 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-8">
-          
+
           <div className="mb-8">
             <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
               <Users className="w-8 h-8 text-indigo-600" />
@@ -55,40 +111,55 @@ const InstructorStudents = () => {
 
           {/* Öğrenci Listesi (Grid) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {mockStudents.map(student => (
-              <div key={student.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xl">
-                      {student.name.charAt(0)}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-800">{student.name}</h3>
-                      <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-bold mt-1 inline-block">
-                        Seviye: {student.level}
-                      </span>
+            {students.length === 0 ? (
+              <div className="lg:col-span-2 bg-yellow-50 text-yellow-800 p-8 rounded-2xl border border-yellow-200 text-center font-semibold">
+                Bu branşa kayıtlı henüz bir öğrenci bulunmamaktadır.
+              </div>
+            ) : (
+              students.map(student => (
+                <div key={student.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xl uppercase">
+                        {(student.ad?.charAt(0) || '') + (student.soyad?.charAt(0) || '')}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-800">{student.ad} {student.soyad}</h3>
+                        <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md text-xs font-bold mt-1 inline-block">
+                          Seviye: {student.level || 'Belirlenmedi'}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex gap-3 mt-auto">
-                  <button 
-                    onClick={() => setSelectedStudentForStats(student)}
-                    className="flex-1 flex justify-center items-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white font-bold rounded-xl transition-colors text-sm"
-                  >
-                    <BarChart2 className="w-4 h-4" />
-                    Gelişim Analizi
-                  </button>
-                  <button 
-                    onClick={() => setSelectedStudentForTask(student)}
-                    className="flex-1 flex justify-center items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white font-bold rounded-xl transition-colors text-sm"
-                  >
-                    <Paperclip className="w-4 h-4" />
-                    Özel Görev Ata
-                  </button>
+                  <div className="flex gap-3 mt-auto">
+                    <button
+                      onClick={() => setSelectedStudentForStats(student)}
+                      className="flex-1 flex justify-center items-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white font-bold rounded-xl transition-colors text-sm"
+                    >
+                      <BarChart2 className="w-4 h-4" />
+                      Analiz
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedStudentForExamAssign(student);
+                        setSelectedExamIds([]);
+                      }}
+                      className="flex-1 flex justify-center items-center gap-2 px-4 py-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white font-bold rounded-xl transition-colors text-sm"
+                    >
+                      <CheckSquare className="w-4 h-4" />
+                      Sınav Ata
+                    </button>
+                    <button
+                      onClick={() => setSelectedStudentForTask(student)}
+                      className="flex-1 flex justify-center items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white font-bold rounded-xl transition-colors text-sm"
+                    >
+                      <Paperclip className="w-4 h-4" />
+                      Görev
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )))}
           </div>
 
         </div>
@@ -104,17 +175,17 @@ const InstructorStudents = () => {
                   <BarChart2 className="w-5 h-5 text-blue-600" />
                   Gelişim Analizi
                 </h3>
-                <p className="text-sm text-slate-500 font-medium mt-1">{selectedStudentForStats.name}</p>
+                <p className="text-sm text-slate-500 font-medium mt-1">{selectedStudentForStats.ad} {selectedStudentForStats.soyad}</p>
               </div>
               <button onClick={() => setSelectedStudentForStats(null)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-8">
-              <ProgressBar label="Gramer (Dilbilgisi)" value={selectedStudentForStats.stats.gramer} />
-              <ProgressBar label="Okuma (Reading)" value={selectedStudentForStats.stats.okuma} />
-              <ProgressBar label="Dinleme (Listening)" value={selectedStudentForStats.stats.dinleme} />
-              <ProgressBar label="Yazma (Writing)" value={selectedStudentForStats.stats.yazma} />
+              <ProgressBar label="Gramer (Dilbilgisi)" value={selectedStudentForStats.stats?.gramer || 0} />
+              <ProgressBar label="Okuma (Reading)" value={selectedStudentForStats.stats?.okuma || 0} />
+              <ProgressBar label="Dinleme (Listening)" value={selectedStudentForStats.stats?.dinleme || 0} />
+              <ProgressBar label="Yazma (Writing)" value={selectedStudentForStats.stats?.yazma || 0} />
             </div>
             <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end">
               <button onClick={() => setSelectedStudentForStats(null)} className="px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl transition-colors text-sm">
@@ -135,20 +206,20 @@ const InstructorStudents = () => {
                   <Paperclip className="w-5 h-5" />
                   Özel Görev Ata
                 </h3>
-                <p className="text-sm text-emerald-600/80 font-medium mt-1">Hedef Öğrenci: {selectedStudentForTask.name}</p>
+                <p className="text-sm text-emerald-600/80 font-medium mt-1">Hedef Öğrenci: {selectedStudentForTask.ad} {selectedStudentForTask.soyad}</p>
               </div>
               <button onClick={() => setSelectedStudentForTask(null)} className="p-2 text-emerald-600/60 hover:text-emerald-800 hover:bg-emerald-100 rounded-lg transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <form onSubmit={handleAssignTask} className="p-6 overflow-y-auto space-y-5">
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">Görev Başlığı</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   required
-                  placeholder="Örn: Dinleme Pratiği Ek Çalışması" 
+                  placeholder="Örn: Dinleme Pratiği Ek Çalışması"
                   className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-slate-800"
                 />
               </div>
@@ -164,7 +235,7 @@ const InstructorStudents = () => {
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">Eğitmen Notu</label>
-                <textarea 
+                <textarea
                   rows="3"
                   required
                   placeholder='Örn: "Dinleme becerin için bu kaydı incele ve soruları yanıtla..."'
@@ -174,8 +245,8 @@ const InstructorStudents = () => {
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">Son Teslim Tarihi</label>
-                <input 
-                  type="date" 
+                <input
+                  type="date"
                   required
                   className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-slate-800"
                 />
@@ -201,6 +272,64 @@ const InstructorStudents = () => {
                 <button type="submit" className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-[0_4px_14px_0_rgba(5,150,105,0.39)] hover:shadow-[0_6px_20px_rgba(5,150,105,0.23)] hover:-translate-y-0.5 transition-all flex items-center gap-2">
                   <CheckCircle className="w-5 h-5" />
                   Gönder
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: Sınav Ata */}
+      {selectedStudentForExamAssign && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-indigo-50">
+              <div>
+                <h3 className="text-xl font-bold text-indigo-800 flex items-center gap-2">
+                  <CheckSquare className="w-5 h-5" />
+                  Sınav Ataması Yap
+                </h3>
+                <p className="text-sm text-indigo-600/80 font-medium mt-1">Öğrenci: {selectedStudentForExamAssign.ad} {selectedStudentForExamAssign.soyad}</p>
+              </div>
+              <button onClick={() => setSelectedStudentForExamAssign(null)} className="p-2 text-indigo-600/60 hover:text-indigo-800 hover:bg-indigo-100 rounded-lg transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAssignExamsSubmit} className="p-6 overflow-y-auto space-y-4">
+              <p className="text-sm font-bold text-slate-700 mb-2">Lütfen atanacak sınav veya modülleri seçin:</p>
+
+              <div className="flex flex-col gap-3">
+                {availableExams.length === 0 ? (
+                  <div className="text-sm text-slate-500 italic">Havuzda uygun sınav bulunmuyor.</div>
+                ) : (
+                  availableExams.map(exam => (
+                    <label key={exam.id} className={`flex items-center gap-3 p-4 border rounded-xl transition-all cursor-pointer ${selectedExamIds.includes(exam.id) ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                      <input
+                        type="checkbox"
+                        className="w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500 border-slate-300"
+                        checked={selectedExamIds.includes(exam.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedExamIds(prev => [...prev, exam.id]);
+                          else setSelectedExamIds(prev => prev.filter(id => id !== exam.id));
+                        }}
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-slate-800">{exam.title}</span>
+                        <span className="text-xs text-slate-500">{exam.exam_type_display} - {exam.level || 'Ortak'} Seviye</span>
+                      </div>
+                    </label>
+                  ))
+                )}
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 flex justify-end gap-3 mt-6">
+                <button type="button" onClick={() => setSelectedStudentForExamAssign(null)} className="px-6 py-3 bg-white border border-slate-300 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors">
+                  İptal
+                </button>
+                <button type="submit" className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5" />
+                  Atamayı Tamamla
                 </button>
               </div>
             </form>

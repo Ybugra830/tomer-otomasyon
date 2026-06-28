@@ -223,11 +223,12 @@ class StudentExamResult(models.Model):
 
 
 class StudentExamAssignment(models.Model):
-    """Admin tarafından öğrenciye atanan sınavlar"""
+    """Eğitmen tarafından öğrenciye atanan sınavlar"""
     STATUS_CHOICES = [
         ('BEKLIYOR', 'Bekliyor'),
         ('BASLATILDI', 'Başlatıldı'),
         ('TAMAMLANDI', 'Tamamlandı'),
+        ('BASARISIZ', 'Başarısız'),
     ]
 
     student = models.ForeignKey(
@@ -242,18 +243,27 @@ class StudentExamAssignment(models.Model):
         related_name='assignments',
         verbose_name='Sınav'
     )
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_exams_given',
+        verbose_name='Atamayı Yapan Eğitmen'
+    )
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
         default='BEKLIYOR',
         verbose_name='Durum'
     )
+    achieved_score = models.FloatField(null=True, blank=True, verbose_name='Alınan Puan')
     assigned_at = models.DateTimeField(auto_now_add=True, verbose_name='Atanma Tarihi')
 
     class Meta:
         verbose_name = 'Sınav Ataması'
         verbose_name_plural = 'Sınav Atamaları'
-        unique_together = ('student', 'exam')
+        # unique_together = ('student', 'exam')  # Telafi için iptal edildi!
         ordering = ['-assigned_at']
 
     def __str__(self):

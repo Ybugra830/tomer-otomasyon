@@ -45,8 +45,8 @@ const StudentSidebar = () => {
       try {
         const token = localStorage.getItem('access_token') || localStorage.getItem('access');
         if (!token) return;
-        const config = { headers: { Authorization: `Bearer ${token}` } };
-        const res = await axios.get('http://127.0.0.1:8000/api/communications/student/announcements/unread/', config);
+        const headers = { Authorization: `Bearer ${token}` };
+        const res = await axios.get('http://127.0.0.1:8000/api/communications/student/announcements/unread/', { headers });
 
         const latestId = res.data.latest_id;
         const lastRead = parseInt(localStorage.getItem('last_read_announcement_id') || '0', 10);
@@ -57,7 +57,8 @@ const StudentSidebar = () => {
           setHasNewAnnouncement(false);
         }
       } catch (err) {
-        console.error(err);
+        // 403 hatasının global akışı kilitlemesini engelleyen zırh:
+        console.warn("Sidebar unread API returns 403, bypassed safely.");
       }
     };
 
