@@ -432,32 +432,53 @@ class InstructorDashboardSummaryView(APIView):
 
     def get(self, request, *args, **kwargs):
         user = request.user
-        
+
         if user.user_type != 'INSTRUCTOR':
             return Response({'error': 'Yetkiniz yok.'}, status=status.HTTP_403_FORBIDDEN)
-            
+
         try:
-            profile = user.instructor_profile
-            instructor_lang = profile.department.lower()
+            import unicodedata
+
+            def normalize_search_text(value):
+                normalized = unicodedata.normalize('NFKD', str(value or '').lower())
+                return ''.join(ch for ch in normalized if not unicodedata.combining(ch))
+
+            instructor_profile = request.user.instructor_profile
+            dept_raw = normalize_search_text(getattr(instructor_profile, 'department', ''))
+
+            dept_display = ''
+            if hasattr(instructor_profile, 'get_department_display'):
+                dept_display = normalize_search_text(instructor_profile.get_department_display())
+
+            search_text = f"{dept_raw} {dept_display}".strip()
         except Exception:
-            instructor_lang = ''
-            
-        # Ön yüzden gelen Form dillerini backend department adlarına eşliyoruz
-        lang_map = {
-            'turkce': 'Türkçe',
-            'ingilizce': 'İngilizce',
-            'almanca': 'almanca', # Yeni eklenen language backend gönderimi 'almanca' 
-        }
-        
-        target_lang = lang_map.get(instructor_lang, instructor_lang)
-        
+            search_text = ''
+
+        instructor_lang = ''
+        if 'ing' in search_text or 'english' in search_text:
+            instructor_lang = 'ingilizce'
+        elif 'tür' in search_text or 'turk' in search_text or 'tömer' in search_text or 'tomer' in search_text:
+            instructor_lang = 'türkçe'
+        elif 'alm' in search_text or 'german' in search_text:
+            instructor_lang = 'almanca'
+
         from accounts.models import StudentProfile
-        # 1. Branşa göre KESİN FİLTRELEME
-        my_students_qs = StudentProfile.objects.filter(language=target_lang)
-        
-        # 2. Üst Kartlar Canlı Sayılar
+
+        language_variants = {
+            'ingilizce': ['İngilizce', 'ingilizce', 'İNGİLİZCE', 'Ingilizce', 'English', 'english'],
+            'türkçe': ['Türkçe', 'türkçe', 'TÜRKÇE', 'Turkce', 'turkce', 'Tömer', 'tömer'],
+            'almanca': ['Almanca', 'almanca', 'ALMANCA', 'German', 'german'],
+        }
+
+        if instructor_lang:
+            my_students_qs = StudentProfile.objects.filter(
+                language__in=language_variants.get(instructor_lang, [])
+            )
+        else:
+            my_students_qs = StudentProfile.objects.none()
+
         active_students_count = my_students_qs.filter(user__is_active=True).count()
-        
+
         from exams.models import StudentAnswer
         pending_assignments_count = StudentAnswer.objects.filter(
             score__isnull=True,
@@ -465,16 +486,15 @@ class InstructorDashboardSummaryView(APIView):
         ).exclude(
             text_answer=''
         ).count()
-        
-        unread_messages_count = 0      # Statik ama model hazır
-        
+
+        unread_messages_count = 0
+
         stats = {
             'active_students': active_students_count,
             'pending_assignments': pending_assignments_count,
             'unread_messages': unread_messages_count,
         }
-        
-        # 3. Öğrenci Listesi Verisi
+
         student_list = []
         for st_profile in my_students_qs.select_related('user'):
             u = st_profile.user
@@ -487,16 +507,15 @@ class InstructorDashboardSummaryView(APIView):
                 'is_active': u.is_active,
                 'durum': 'Aktif' if u.is_active else 'Beklemede'
             })
-            
-        # Madde 1: Eğitmenin branş display adını döndür
+
         branch_display_map = {
-            'turkce': 'Türkçe',
+            'türkçe': 'Türkçe',
             'ingilizce': 'İngilizce',
             'almanca': 'Almanca',
-            'diger': 'Diğer',
+            '': 'Diğer',
         }
         instructor_branch = branch_display_map.get(instructor_lang, instructor_lang)
-        
+
         return Response({
             'stats': stats,
             'student_list': student_list,
