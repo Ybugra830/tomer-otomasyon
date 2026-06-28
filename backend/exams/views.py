@@ -889,13 +889,66 @@ class StudentPendingExamsView(APIView):
 class StudentAssignedExamsView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get_assignment_queryset(self, request):
+        base_queryset = StudentExamAssignment.objects.select_related('exam').filter(
+            status__in=['BEKLIYOR', 'BASLATILDI'],
+        )
+
+        student_field = StudentExamAssignment._meta.get_field('student')
+        student_model = student_field.remote_field.model
+
+        request_user_model = getattr(request.user, '_meta', None)
+        if request_user_model and student_model._meta.label == request.user._meta.label:
+            return base_queryset.filter(student=request.user).order_by('-assigned_at')
+
+        if student_model.__name__ == 'StudentProfile':
+            student_profile = getattr(request.user, 'student_profile', None)
+            if not student_profile:
+                return StudentExamAssignment.objects.none()
+            return base_queryset.filter(student=student_profile).order_by('-assigned_at')
+
+        return StudentExamAssignment.objects.none()
+
+    def normalize_exam_type(self, exam):
+        import unicodedata
+
+        valid_types = {'PLACEMENT', 'GRAMMAR', 'LISTENING', 'READING', 'WRITING'}
+        raw_type = str(getattr(exam, 'exam_type', '') or '').strip()
+        raw_upper = raw_type.upper()
+        if raw_upper in valid_types:
+            return raw_upper
+
+        display_type = ''
+        if hasattr(exam, 'get_exam_type_display'):
+            try:
+                display_type = exam.get_exam_type_display()
+            except Exception:
+                display_type = ''
+
+        search_text = ' '.join([
+            raw_type,
+            str(display_type or ''),
+            str(getattr(exam, 'title', '') or ''),
+        ])
+        search_text = unicodedata.normalize('NFKD', search_text.lower())
+        search_text = ''.join(ch for ch in search_text if not unicodedata.combining(ch))
+        search_text = search_text.replace('ı', 'i')
+
+        if 'placement' in search_text or 'seviye' in search_text or 'yetenek' in search_text:
+            return 'PLACEMENT'
+        if 'grammar' in search_text or 'gramer' in search_text:
+            return 'GRAMMAR'
+        if 'listening' in search_text or 'dinleme' in search_text:
+            return 'LISTENING'
+        if 'reading' in search_text or 'okuma' in search_text:
+            return 'READING'
+        if 'writing' in search_text or 'yazma' in search_text:
+            return 'WRITING'
+        return 'PLACEMENT'
+
     def get(self, request):
         try:
-            assignments = StudentExamAssignment.objects.select_related('exam').filter(
-                student=request.user,
-                status__in=['BEKLIYOR', 'BASLATILDI'],
-            ).order_by('-assigned_at')
-
+            assignments = self.get_assignment_queryset(request)
             data = []
 
             for assign in assignments:
@@ -909,23 +962,22 @@ class StudentAssignedExamsView(APIView):
 
                 data.append({
                     'id': assign.id,
-                    'assignment_id': assign.id,
                     'status': assign.status,
                     'exam': {
                         'id': exam.id,
                         'title': exam.title,
                         'duration': exam.duration,
                         'total_questions': exam.total_questions,
-                        'exam_type': exam.exam_type,
+                        'exam_type': self.normalize_exam_type(exam),
                     },
                 })
 
-            return Response(data, status=200)
+            return Response(data, status=status.HTTP_200_OK)
 
         except Exception:
             import traceback
             traceback.print_exc()
-            return Response([], status=200)
+            return Response([], status=status.HTTP_200_OK)
 
 # ==============================================================
 #  9.1) InstructorAssignExamsView -- Eğitmenin Öğrenciye Toplu Sınav Ataması
