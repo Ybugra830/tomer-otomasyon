@@ -104,7 +104,7 @@ const ExamPlayer = () => {
         }));
 
         try {
-            await axios.post('http://127.0.0.1:8000/api/exams/student/submit-static-exam/', {
+            await axios.post(`http://127.0.0.1:8000/api/exams/submit-static-exam/${id}/`, {
                 exam_id: id,
                 answers: answersList
             }, {

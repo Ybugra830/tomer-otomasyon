@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Question, LevelExam, StudentExamResult, StudentExamSession, StudentAdaptiveAnswer, StudentExamAssignment
+from .models import Question, LevelExam, StudentExamResult, StudentExamSession, StudentAdaptiveAnswer, StudentExamAssignment, StudentAnswer
 
 
 @admin.register(Question)
@@ -60,3 +60,12 @@ class StudentExamAssignmentAdmin(admin.ModelAdmin):
     search_fields = ('student__username', 'student__first_name', 'student__last_name')
     readonly_fields = ('assigned_at',)
     ordering = ('-assigned_at',)
+
+
+@admin.register(StudentAnswer)
+class StudentAnswerAdmin(admin.ModelAdmin):
+    list_display = ('student', 'exam', 'question', 'text_answer', 'score', 'is_correct')
+    list_filter = ('exam', 'is_correct', 'question__question_type')
+    search_fields = ('student__username', 'student__first_name', 'student__last_name', 'text_answer')
+    readonly_fields = ('submitted_at',)
+    ordering = ('-submitted_at',)

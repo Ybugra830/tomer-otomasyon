@@ -275,3 +275,21 @@ class StudentWritingSubmission(models.Model):
 
     def __str__(self):
         return f"{self.student} - Question {self.question.id} Writing"
+
+class StudentAnswer(models.Model):
+    """Statik Sınav Öğrenci Cevapları"""
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='static_answers')
+    exam = models.ForeignKey(LevelExam, on_delete=models.CASCADE, related_name='student_answers')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='student_answers')
+    selected_option = models.CharField(max_length=1, null=True, blank=True, verbose_name='Seçilen Şık')
+    text_answer = models.TextField(null=True, blank=True, verbose_name='Yazı/Metin Cevabı')
+    is_correct = models.BooleanField(default=False, verbose_name='Doğru mu?')
+    score = models.FloatField(null=True, blank=True, verbose_name='Eğitmen Notu')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Öğrenci Cevabı (Statik)'
+        verbose_name_plural = 'Öğrenci Cevapları (Statik)'
+
+    def __str__(self):
+        return f"{self.student} - {self.exam.title} - Q{self.question.id}"

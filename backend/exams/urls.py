@@ -4,6 +4,7 @@ from .views import (
     SubmitAnswerAndGetNextView,
     GetExamResultView,
     AdminQuestionPoolView,
+    AdminQuestionDetailView,
     AdminExamListView,
     AdminExamDetailView,
     AdminAssignExamView,
@@ -12,8 +13,9 @@ from .views import (
     GetStaticExamQuestionsView,
     SubmitStaticExamView,
     ToggleExamStatusView,
+    InstructorPendingSubmissionsView,
+    InstructorSubmitGradeView
 )
-
 urlpatterns = [
     # Ogrenci Sinav Uc Noktalari
     path('start/', StartAdaptiveExamView.as_view(), name='start-exam'),
@@ -24,10 +26,15 @@ urlpatterns = [
 
     # Statik Sinav Motoru (Exam Player)
     path('student/get-exam-questions/<int:exam_id>/', GetStaticExamQuestionsView.as_view(), name='get-exam-questions'),
-    path('student/submit-static-exam/', SubmitStaticExamView.as_view(), name='submit-static-exam'),
+    path('submit-static-exam/<int:exam_id>/', SubmitStaticExamView.as_view(), name='submit-static-exam'),
+    
+    # Eğitmen Panel Rotaları
+    path('instructor/pending-writings/', InstructorPendingSubmissionsView.as_view(), name='instructor-pending-writings'),
+    path('instructor/submit-grade/', InstructorSubmitGradeView.as_view(), name='instructor-submit-grade'),
 
     # Super Admin Uc Noktalari
     path('admin/questions/', AdminQuestionPoolView.as_view(), name='admin-questions'),
+    path('admin/questions/<int:question_id>/', AdminQuestionDetailView.as_view(), name='admin-question-detail'),
     path('admin/list/', AdminExamListView.as_view(), name='admin-exams'),
     path('admin/detail/<int:exam_id>/', AdminExamDetailView.as_view(), name='admin-exam-detail'),
     path('admin/assign/', AdminAssignExamView.as_view(), name='admin-assign-exam'),

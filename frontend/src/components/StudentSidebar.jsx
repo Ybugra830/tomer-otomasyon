@@ -92,10 +92,6 @@ const StudentSidebar = () => {
                 CANLI
               </span>
             </button>
-            <button onClick={() => navigate('/aktif-sinavlarim')} className={getNavClass('/aktif-sinavlarim')}>
-              <ClipboardList className={getIconClass('/aktif-sinavlarim')} />
-              Aktif Sınavlarım
-            </button>
             <button onClick={() => navigate('/sinav-sonuclari')} className={getNavClass('/sinav-sonuclari')}>
               <Award className={getIconClass('/sinav-sonuclari')} />
               Sınav Sonuçları

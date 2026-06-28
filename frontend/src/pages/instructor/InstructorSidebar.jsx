@@ -6,7 +6,8 @@ import {
   FilePlus,
   Video,
   Megaphone,
-  ClipboardCheck
+  ClipboardCheck,
+  ClipboardList
 } from 'lucide-react';
 
 const InstructorSidebar = () => {
@@ -47,6 +48,10 @@ const InstructorSidebar = () => {
         <button onClick={() => navigate('/egitmen-degerlendirme')} className={getNavClass('/egitmen-degerlendirme')}>
           <ClipboardCheck className={getIconClass('/egitmen-degerlendirme')} />
           Sınav Değerlendirme
+        </button>
+        <button onClick={() => navigate('/egitmen-sinavlar')} className={getNavClass('/egitmen-sinavlar')}>
+          <ClipboardList className={getIconClass('/egitmen-sinavlar')} />
+          Sınav Merkezi
         </button>
         <button onClick={() => navigate('/egitmen-materyal')} className={getNavClass('/egitmen-materyal')}>
           <FilePlus className={getIconClass('/egitmen-materyal')} />

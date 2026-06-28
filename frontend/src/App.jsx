@@ -10,7 +10,6 @@ import AdminLogin from './pages/AdminLogin';
 import StudentDashboard from './pages/StudentDashboard';
 import StudentProfile from './pages/StudentProfile';
 import CourseMaterials from './pages/CourseMaterials';
-import ActiveExams from './pages/ActiveExams';
 import ExamResults from './pages/ExamResults';
 import Certificates from './pages/Certificates';
 import LiveClasses from './pages/LiveClasses';
@@ -48,7 +47,7 @@ function App() {
               <Route path="/admin-login" element={<AdminLogin />} />
               <Route path="/admin-panel" element={<AdminDashboard />} />
               <Route path="/admin-ogrenciler" element={<StudentManagement />} />
-              <Route path="/admin-sinavlar" element={<ExamCenter />} />
+              <Route path="/egitmen-sinavlar" element={<ExamCenter />} />
               <Route path="/admin-duyurular" element={<SystemAnnouncements />} />
               <Route path="/admin-egitmen-ekle" element={<AddInstructor />} />
               <Route path="/ogrenci-panel" element={<StudentDashboard />} />
@@ -63,7 +62,6 @@ function App() {
               <Route path="/profil" element={<StudentProfile />} />
               <Route path="/materyaller" element={<CourseMaterials />} />
               <Route path="/canli-dersler" element={<LiveClasses />} />
-              <Route path="/aktif-sinavlarim" element={<ActiveExams />} />
               <Route path="/sinav-sonuclari" element={<ExamResults />} />
               <Route path="/egitmen-gorevleri" element={<InstructorTasks />} />
               <Route path="/duyurular" element={<StudentAnnouncements />} />

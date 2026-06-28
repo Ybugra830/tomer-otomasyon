@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import AdminSidebar from './AdminSidebar';
+import { useSelector } from 'react-redux';
+import InstructorSidebar from '../instructor/InstructorSidebar';
 import {
   ClipboardList, Database, PlusCircle, Search, Edit2, Trash2,
   CheckCircle, Clock, X, AlertCircle, Eye, Zap, Upload, Music,
@@ -26,6 +27,32 @@ const QUESTION_TYPE_OPTIONS = [
 ];
 
 const ExamCenter = () => {
+  const authUser = useSelector((state) => state.auth?.user?.user);
+  const name = (authUser?.first_name || authUser?.username || '').toLowerCase();
+  const isInstructor = authUser?.user_type === 'INSTRUCTOR';
+  let forcedLang = 'Türkçe';
+  let dbLangValue = 'turkce';
+
+  if (isInstructor) {
+    if (name.includes('recep') || name.includes('ateş') || name.includes('ates')) {
+      forcedLang = 'İngilizce';
+      dbLangValue = 'ingilizce';
+    } else if (name.includes('muhammed') || name.includes('kalaycı') || name.includes('kalayci')) {
+      forcedLang = 'Almanca';
+      dbLangValue = 'almanca';
+    } else if (name.includes('fikret') || name.includes('bacak')) {
+      forcedLang = 'Türkçe';
+      dbLangValue = 'turkce';
+    }
+  }
+
+  const mapLang = (l) => {
+    if (l === 'İngilizce' || l === 'ingilizce') return 'ingilizce';
+    if (l === 'Türkçe' || l === 'turkce') return 'turkce';
+    if (l === 'Almanca' || l === 'almanca') return 'almanca';
+    return l;
+  };
+
   const [activeTab, setActiveTab] = useState('exams');
 
   // Aktif Sınavlar
@@ -44,7 +71,7 @@ const ExamCenter = () => {
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
   const [isAddQuestionModalOpen, setIsAddQuestionModalOpen] = useState(false);
   const [newQuestion, setNewQuestion] = useState({
-    level: 'A1', text: '', question_type: 'GRAMMAR',
+    level: 'A1', text: '', question_type: 'GRAMMAR', language: '',
     is_reading: false, reading_text: '',
     option_a: '', option_b: '', option_c: '', option_d: '',
     correct_answer: 'A'
@@ -60,6 +87,13 @@ const ExamCenter = () => {
   const [isSelectQuestionsModalOpen, setIsSelectQuestionsModalOpen] = useState(false);
   const [poolQuestions, setPoolQuestions] = useState([]);
   const [isLoadingPool, setIsLoadingPool] = useState(false);
+
+  useEffect(() => {
+    if (isInstructor && dbLangValue) {
+      setNewQuestion(prev => ({ ...prev, language: dbLangValue }));
+      setNewExam(prev => ({ ...prev, language: dbLangValue }));
+    }
+  }, [isInstructor, dbLangValue]);
 
   // Toast
   const [toastMessage, setToastMessage] = useState('');
@@ -115,6 +149,7 @@ const ExamCenter = () => {
       fd.append('level', newQuestion.level);
       fd.append('text', newQuestion.text);
       fd.append('question_type', newQuestion.question_type);
+      fd.append('language', isInstructor ? dbLangValue : mapLang(newQuestion.language));
       fd.append('is_reading', newQuestion.is_reading);
       if (newQuestion.reading_text) fd.append('reading_text', newQuestion.reading_text);
       if (needsOptions) {
@@ -129,7 +164,7 @@ const ExamCenter = () => {
       await createAdminQuestion(fd);
       setIsAddQuestionModalOpen(false);
       setNewQuestion({
-        level: 'A1', text: '', question_type: 'GRAMMAR',
+        level: 'A1', text: '', question_type: 'GRAMMAR', language: isInstructor ? dbLangValue : '',
         is_reading: false, reading_text: '',
         option_a: '', option_b: '', option_c: '', option_d: '', correct_answer: 'A'
       });
@@ -153,7 +188,7 @@ const ExamCenter = () => {
         title: newExam.title,
         exam_type: newExam.exam_type,
         level: newExam.level,
-        language: newExam.language,
+        language: isInstructor ? dbLangValue : mapLang(newExam.language),
         passing_score: parseInt(newExam.passing_score) || 70,
         duration: parseInt(newExam.duration) || 60,
         question_ids: selectedQuestionIds, // Bizim topladığımız state
@@ -163,7 +198,7 @@ const ExamCenter = () => {
       };
       await createAdminExam(payload);
       showToast("Sınav başarıyla yayınlandı!");
-      setNewExam({ title: '', exam_type: 'GRAMMAR', level: '', language: '', passing_score: '', duration: '' });
+      setNewExam({ title: '', exam_type: 'GRAMMAR', level: '', language: isInstructor ? dbLangValue : '', passing_score: '', duration: '' });
       setSelectedQuestionIds([]);
       setActiveTab('exams');
     } catch (error) {
@@ -175,7 +210,8 @@ const ExamCenter = () => {
 
   // --- MANUAL QUESTION SELECTION ---
   const openQuestionSelector = async () => {
-    if (!newExam.language) {
+    const selectedLanguage = newExam.language || (isInstructor ? dbLangValue : '');
+    if (!selectedLanguage) {
       alert("Lütfen havuzdan soru seçmeden önce Sınav Dilini belirleyiniz.");
       return;
     }
@@ -186,7 +222,7 @@ const ExamCenter = () => {
       const typeMap = { 'GRAMMAR': 'GRAMMAR', 'LISTENING': 'LISTENING', 'READING': 'READING', 'WRITING': 'WRITING' };
       const qType = typeMap[newExam.exam_type] || '';
       const data = await getAdminQuestions('', '', qType);
-      setPoolQuestions(data.filter(q => q.language === newExam.language));
+      setPoolQuestions(data.filter(q => q.language === mapLang(selectedLanguage)));
     } catch (e) { console.error("Havuz çekme hata:", e); }
     finally { setIsLoadingPool(false); }
   };
@@ -267,8 +303,8 @@ const ExamCenter = () => {
                         <button
                           onClick={() => handleToggleStatus(exam.id)}
                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold cursor-pointer transition-all hover:scale-105 ${exam.is_published
-                              ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                             }`}
                           title={exam.is_published ? 'Tıklayın: Taslağa çek' : 'Tıklayın: Yayına al'}
                         >
@@ -288,12 +324,21 @@ const ExamCenter = () => {
             {/* İçerik Modalı */}
             {isDetailModalOpen && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-                <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] overflow-y-auto">
-                  <div className="flex justify-between items-center p-6 border-b border-slate-200 sticky top-0 bg-white z-10">
+                <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+
+                  {/* Absolute X Butonu */}
+                  <button
+                    onClick={() => setIsDetailModalOpen(false)}
+                    className="absolute top-4 right-4 z-20 p-2 bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-full transition-all"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+
+                  <div className="p-6 border-b border-slate-200 shrink-0 pr-16 bg-white z-10">
                     <h3 className="text-xl font-bold text-slate-800">{examDetail?.exam?.title || 'Sınav İçeriği'}</h3>
-                    <button onClick={() => setIsDetailModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-6 h-6" /></button>
                   </div>
-                  <div className="p-6">
+
+                  <div className="p-6 overflow-y-auto flex-grow">
                     {isLoadingDetail ? (
                       <div className="text-center py-10 text-slate-500 animate-pulse">Yükleniyor...</div>
                     ) : !examDetail ? (
@@ -365,6 +410,17 @@ const ExamCenter = () => {
                       </div>
                     )}
                   </div>
+
+                  {/* Alt Kısım Kapat Butonu */}
+                  <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end shrink-0">
+                    <button
+                      onClick={() => setIsDetailModalOpen(false)}
+                      className="px-6 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg transition-all"
+                    >
+                      Kapat
+                    </button>
+                  </div>
+
                 </div>
               </div>
             )}
@@ -427,7 +483,29 @@ const ExamCenter = () => {
                     <button onClick={() => setIsAddQuestionModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-6 h-6" /></button>
                   </div>
                   <form onSubmit={handleAddQuestionSubmit} className="p-6 space-y-5">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">
+                          Soru Dili {isInstructor && <span className="text-gray-400 text-xs">(Branşınız Sebebiyle Sabitlendi)</span>}
+                        </label>
+                        <select
+                          value={isInstructor ? forcedLang : newQuestion.language}
+                          disabled={isInstructor}
+                          onChange={(e) => setNewQuestion({ ...newQuestion, language: e.target.value })}
+                          className={`w-full p-2 border rounded-lg ${isInstructor ? 'bg-gray-100 cursor-not-allowed text-gray-700 font-medium' : 'focus:ring-2 focus:ring-indigo-500'}`}
+                        >
+                          {isInstructor ? (
+                            <option value={forcedLang}>{forcedLang} (Branşınız Sebebiyle Sabitlendi)</option>
+                          ) : (
+                            <>
+                              <option value="">Dil Seçiniz</option>
+                              <option value="turkce">Türkçe</option>
+                              <option value="ingilizce">İngilizce</option>
+                              <option value="almanca">Almanca</option>
+                            </>
+                          )}
+                        </select>
+                      </div>
                       <div>
                         <label className="block text-sm font-bold text-slate-700 mb-1">Seviye</label>
                         <select required value={newQuestion.level} onChange={e => setNewQuestion({ ...newQuestion, level: e.target.value })} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
@@ -546,12 +624,25 @@ const ExamCenter = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700">Sınav Dili</label>
-                  <select required value={newExam.language} onChange={e => setNewExam({ ...newExam, language: e.target.value })} className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-slate-800 bg-white">
-                    <option value="">Sınav Dilini Seçiniz</option>
-                    <option value="turkce">Türkçe</option>
-                    <option value="ingilizce">İngilizce</option>
-                    <option value="almanca">Almanca</option>
+                  <label className="text-sm font-bold text-gray-700 block mb-1">
+                    Sınav Dili {isInstructor && <span className="text-gray-400 text-xs">(Branşınız Sebebiyle Sabitlendi)</span>}
+                  </label>
+                  <select
+                    value={isInstructor ? forcedLang : newExam.language}
+                    disabled={isInstructor}
+                    onChange={(e) => setNewExam({ ...newExam, language: e.target.value })}
+                    className={`w-full p-2 border rounded-lg ${isInstructor ? 'bg-gray-100 cursor-not-allowed text-gray-700 font-medium' : 'focus:ring-2 focus:ring-indigo-500'}`}
+                  >
+                    {isInstructor ? (
+                      <option value={forcedLang}>{forcedLang} (Branşınız Sebebiyle Sabitlendi)</option>
+                    ) : (
+                      <>
+                        <option value="">Sınav Dilini Seçiniz</option>
+                        <option value="turkce">Türkçe</option>
+                        <option value="ingilizce">İngilizce</option>
+                        <option value="almanca">Almanca</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
@@ -670,7 +761,7 @@ const ExamCenter = () => {
 
   return (
     <div className="flex min-h-[85vh] bg-slate-50 w-full relative z-10">
-      <AdminSidebar />
+      <InstructorSidebar />
       <main className="flex-1 p-8 lg:p-12 overflow-y-auto w-full relative">
         {toastMessage && (
           <div className="absolute top-8 right-8 z-50 animate-in slide-in-from-top-4 fade-in duration-300">

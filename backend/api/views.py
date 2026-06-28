@@ -457,7 +457,15 @@ class InstructorDashboardSummaryView(APIView):
         
         # 2. Üst Kartlar Canlı Sayılar
         active_students_count = my_students_qs.filter(user__is_active=True).count()
-        pending_assignments_count = 0  # Statik ama model hazır
+        
+        from exams.models import StudentAnswer
+        pending_assignments_count = StudentAnswer.objects.filter(
+            score__isnull=True,
+            text_answer__isnull=False,
+        ).exclude(
+            text_answer=''
+        ).count()
+        
         unread_messages_count = 0      # Statik ama model hazır
         
         stats = {

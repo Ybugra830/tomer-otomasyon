@@ -1,11 +1,10 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Users, 
-  UserCheck, 
-  ClipboardList, 
-  Megaphone 
+import {
+  LayoutDashboard,
+  Users,
+  UserCheck,
+  Megaphone
 } from 'lucide-react';
 
 const AdminSidebar = () => {
@@ -31,7 +30,7 @@ const AdminSidebar = () => {
           Süper Admin
         </h2>
       </div>
-      
+
       <nav className="flex-grow p-6 space-y-2 overflow-y-auto">
         <button onClick={() => navigate('/admin-panel')} className={getLinkClass('/admin-panel')}>
           <LayoutDashboard className={getIconClass('/admin-panel')} />
@@ -45,16 +44,12 @@ const AdminSidebar = () => {
           <UserCheck className={getIconClass('/admin-egitmen-ekle')} />
           Eğitmen Yönetimi
         </button>
-        <button onClick={() => navigate('/admin-sinavlar')} className={getLinkClass('/admin-sinavlar')}>
-          <ClipboardList className={getIconClass('/admin-sinavlar')} />
-          Sınav Merkezi
-        </button>
         <button onClick={() => navigate('/admin-duyurular')} className={getLinkClass('/admin-duyurular')}>
           <Megaphone className={getIconClass('/admin-duyurular')} />
           Sistem Duyuruları
         </button>
       </nav>
-      
+
       <div className="p-6 border-t border-slate-800/50 mt-auto bg-slate-900/50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-inner">

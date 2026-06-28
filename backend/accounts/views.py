@@ -40,6 +40,15 @@ class StudentProfileDetailView(APIView):
             if profile:
                 data['language'] = profile.language or ''
                 data['tahminiSeviye'] = profile.level or 'A1'
+                
+                # Check if student has actual exam results (stamped definite level)
+                from exams.models import StudentExamResult
+                has_result = StudentExamResult.objects.filter(user=user).exists()
+                if has_result:
+                    data['kesinSeviye'] = profile.level
+                else:
+                    data['kesinSeviye'] = None
+                    
                 data['basvuruTipi'] = profile.get_application_type_display() if profile.application_type else 'Kurs / Sınav'
                 data['father_name'] = profile.father_name or ''
                 data['mother_name'] = profile.mother_name or ''
@@ -250,7 +259,8 @@ class InstructorLoginView(APIView):
                     'user': {
                         'ad': user.first_name,
                         'soyad': user.last_name,
-                        'user_type': user.user_type
+                        'user_type': user.user_type,
+                        'department': getattr(user, 'instructor_profile', None).department if hasattr(user, 'instructor_profile') else ''
                     }
                 }, status=status.HTTP_200_OK)
             elif user.check_password(password):
@@ -262,7 +272,8 @@ class InstructorLoginView(APIView):
                     'user': {
                         'ad': user.first_name,
                         'soyad': user.last_name,
-                        'user_type': user.user_type
+                        'user_type': user.user_type,
+                        'department': getattr(user, 'instructor_profile', None).department if hasattr(user, 'instructor_profile') else ''
                     }
                 }, status=status.HTTP_200_OK)
             else:
